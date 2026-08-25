@@ -573,7 +573,7 @@ html,body{ background:
     </div>
 
     <label class="auto-refresh-row">
-      <span>🔄 Auto-refresh (har 60 second mein signal khud refresh hoga)</span>
+      <span>🔄 Auto-refresh (har 5 second mein signal khud refresh hoga)</span>
       <input type="checkbox" id="autoRefreshToggle" checked />
     </label>
 
@@ -1433,13 +1433,13 @@ document.getElementById("setupFavBtn").onclick = ()=>{
 let autoRefreshTimer = null;
 function startAutoRefresh(){
   if(autoRefreshTimer) clearInterval(autoRefreshTimer);
-  autoRefreshTimer = setInterval(runAnalysis, 60000); // "har 60 second mein signal khud refresh hoga"
+  autoRefreshTimer = setInterval(runAnalysis, 5000); // "har 5 second mein signal khud refresh hoga"
 }
 function stopAutoRefresh(){
   if(autoRefreshTimer){ clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
 }
 document.getElementById("autoRefreshToggle").addEventListener("change", (e)=>{
-  if(e.target.checked){ startAutoRefresh(); toast("Auto-refresh ON — har 60 second mein signal refresh hoga"); }
+  if(e.target.checked){ startAutoRefresh(); toast("Auto-refresh ON — har 5 second mein signal refresh hoga"); }
   else { stopAutoRefresh(); toast("Auto-refresh OFF — ab ANALYZE khud dabana hoga"); }
 });
 
