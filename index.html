@@ -231,6 +231,19 @@
   .coin-chip{ font-family:'IBM Plex Mono',monospace; font-size:12px; padding:7px 12px; border-radius:10px; border:1.5px solid var(--red-line); background:#fff; color:var(--ink); }
   .coin-chip.active{ background:var(--red); color:#fff; border-color:var(--red); }
 
+  /* Buy Opportunities scanner */
+  .buyopp-card{ border-color:var(--green); }
+  .buyopp-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .buyopp-status{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft); }
+  .buyopp-scan-btn{ width:auto; margin:0; padding:8px 14px; font-size:12px; background:var(--green); }
+  .buyopp-list{ display:flex; flex-direction:column; gap:8px; }
+  .buyopp-item{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:11px 13px; border-radius:12px; border:1.5px solid var(--green); background:var(--green-soft); cursor:pointer; }
+  .buyopp-item .sym{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:13.5px; color:var(--ink); }
+  .buyopp-item .tf{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-soft); margin-top:2px; }
+  .buyopp-item .score{ font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:700; color:var(--green); }
+  .buyopp-item .px{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); }
+  .buyopp-empty{ text-align:center; padding:16px 10px; color:var(--ink-soft); font-size:13px; font-family:'IBM Plex Mono',monospace; }
+
   /* generic panel styling reused for risk / sizing / paper / watchlist / alerts / history */
   .panel-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; min-width:0; }
   .field{ display:flex; flex-direction:column; gap:4px; min-width:0; }
@@ -588,6 +601,16 @@ html,body{ background:
   </div>
 
   <div class="coin-list" id="quickCoins"></div>
+
+  <div class="engine-title">🟢 Buy Opportunities <span style="font-size:11px; color:var(--ink-soft); font-weight:400; font-family:'IBM Plex Mono',monospace;">— jo coins abhi buy criteria pura kar rahe hain</span></div>
+  <div class="card buyopp-card" id="buyOppCard">
+    <div class="buyopp-head">
+      <div class="buyopp-status" id="buyOppStatus">Scan shuru ho raha hai…</div>
+      <button class="btn buyopp-scan-btn" id="buyOppScanBtn" type="button">🔄 Rescan</button>
+    </div>
+    <div class="buyopp-list" id="buyOppList"><div class="buyopp-empty">Scanning…</div></div>
+    <div class="disclaimer" style="margin-top:10px;">Yeh sirf woh coins hain jinka score abhi BUY threshold cross kar raha hai (watchlist + top coins, current entry timeframe pe). Yeh guarantee nahi hai — khud confirm karke hi trade karein.</div>
+  </div>
 
   <div class="card">
     <div class="card-head">
@@ -1290,6 +1313,69 @@ function renderQuickCoins(){
   el.querySelectorAll(".coin-chip").forEach(chip => { chip.onclick = () => selectSymbol(chip.dataset.sym); });
 }
 
+/* =====================================================
+   BUY OPPORTUNITIES SCANNER
+   Scans QUICK coins + the user's watchlist (deduped, capped)
+   on the currently selected entry timeframe, and surfaces
+   only the ones whose live score currently clears the BUY
+   gate in computeSignal() — a separate, at-a-glance list from
+   the single-coin analysis above, not a replacement for it.
+   ===================================================== */
+let buyOppScanning = false;
+let buyOppResults = [];
+
+function buyOppScanList(){
+  const list = [...QUICK, ...watchlist];
+  return [...new Set(list)].slice(0, 12);
+}
+
+async function scanBuyOpportunities(){
+  if(buyOppScanning) return;
+  buyOppScanning = true;
+  const statusEl = document.getElementById("buyOppStatus");
+  const listEl = document.getElementById("buyOppList");
+  const symbols = buyOppScanList();
+  const found = [];
+
+  for(let i=0; i<symbols.length; i++){
+    const sym = symbols[i];
+    statusEl.textContent = `Scanning ${i+1}/${symbols.length} — ${sym.replace("USDT","")}…`;
+    try{
+      const entryData = await fetchKlines(sym, ENTRY_TF, 260);
+      const price = entryData.closes[entryData.closes.length-1];
+      const ctxTf = await loadContextTimeframes(sym);
+      const result = computeSignal({ closes: entryData.closes, highs: entryData.highs, lows: entryData.lows, volumes: entryData.volumes, price, bid: price, ask: price }, ctxTf);
+      if(result.signal === "BUY"){
+        found.push({ symbol: sym, score: result.score, entry: result.entry, price });
+      }
+    }catch(e){ /* skip coin on data error, keep scanning the rest */ }
+  }
+
+  found.sort((a,b)=> b.score - a.score);
+  buyOppResults = found;
+  const scanTf = ENTRY_TF.toUpperCase();
+
+  if(found.length === 0){
+    listEl.innerHTML = `<div class="buyopp-empty">Abhi ${scanTf} pe koi coin BUY criteria pura nahi kar raha. NO_TRADE bhi ek valid result hai.</div>`;
+  } else {
+    listEl.innerHTML = found.map(f => `
+      <div class="buyopp-item" data-sym="${f.symbol}">
+        <div>
+          <div class="sym">${f.symbol.replace("USDT","/USDT")}</div>
+          <div class="tf">${scanTf} · entry ≈ $${formatPrice(f.entry)}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="score">${f.score}/100</div>
+          <div class="px">$${formatPrice(f.price)}</div>
+        </div>
+      </div>`).join("");
+    listEl.querySelectorAll(".buyopp-item").forEach(item => { item.onclick = () => selectSymbol(item.dataset.sym); });
+  }
+
+  statusEl.textContent = `Last scan just now · ${symbols.length} coin(s) checked · ${found.length} BUY match`;
+  buyOppScanning = false;
+}
+
 function setDataStatus(ok){
   dataStatus = ok ? "CONNECTED" : "DISCONNECTED";
   const pill = document.getElementById("statusPill");
@@ -1414,7 +1500,10 @@ document.getElementById("analyzeBtn").onclick = ()=>{
   document.getElementById("tfBadge").textContent = "entry timeframe · " + tf.toUpperCase();
   selectSymbol(pendingSymbol);
   document.getElementById("setupCurrentText").textContent = `${pendingSymbol.replace("USDT","/USDT")} · ${tf.toUpperCase()} — analyzing…`;
+  scanBuyOpportunities();
 };
+
+document.getElementById("buyOppScanBtn").onclick = scanBuyOpportunities;
 
 document.getElementById("setupFavBtn").onclick = ()=>{
   const sym = pendingSymbol;
@@ -2294,8 +2383,9 @@ renderPaperAccount();
 renderRisk();
 renderOvernight();
 startPriceStream(currentSymbol);
-loadCoinList().then(runAnalysis);
+loadCoinList().then(runAnalysis).then(scanBuyOpportunities);
 setInterval(loadCoinList, 30000);
+setInterval(scanBuyOpportunities, 120000); // rescan buy opportunities every 2 minutes
 if(document.getElementById("autoRefreshToggle").checked) startAutoRefresh();
 setInterval(renderOvernight, 60000); // keep "last scan X min ago" and morning verdict fresh
 setInterval(async ()=>{ if(currentSymbol) mtfCache = await loadContextTimeframes(currentSymbol); }, 90000);
