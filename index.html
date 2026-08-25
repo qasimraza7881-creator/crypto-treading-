@@ -336,6 +336,108 @@
   .plan-card.vip{ border-color:#c99a2e; background:linear-gradient(180deg,#fff8e8,#fff); }
   .plan-card.vip .pbadge{ background:linear-gradient(135deg,#c99a2e,#8a6a1a); }
   .plan-card.vip .pname{ color:#8a6a1a; }
+/* ============================================================
+   PREMIUM DEPTH LAYER — adds dimensional shading, glossy edges,
+   and tactile press states on top of the existing palette without
+   changing the brand colors or layout.
+   ============================================================ */
+:root{
+  --shadow-xs: 0 1px 2px rgba(26,18,19,.05);
+  --shadow-sm: 0 2px 6px rgba(26,18,19,.06), 0 1px 2px rgba(26,18,19,.05);
+  --shadow-md: 0 10px 24px rgba(26,18,19,.09), 0 2px 6px rgba(26,18,19,.06);
+  --shadow-lg: 0 24px 56px rgba(26,18,19,.16), 0 6px 16px rgba(26,18,19,.10);
+  --shadow-red: 0 10px 22px rgba(200,19,36,.30), 0 2px 5px rgba(143,13,26,.35);
+  --shadow-red-active: 0 3px 8px rgba(200,19,36,.28), 0 1px 2px rgba(143,13,26,.35);
+  --inset-recess: inset 0 2px 4px rgba(26,18,19,.08), inset 0 0 0 1px rgba(26,18,19,.02);
+  --sheen: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 40%);
+}
+
+html,body{ background:
+  radial-gradient(1200px 500px at 50% -120px, #fff3f3 0%, transparent 60%),
+  linear-gradient(180deg, #fbfbfb, var(--bg) 300px);
+}
+
+/* raised surfaces: cards, sheets, plans */
+.card, .setup-card, .member-card, .auth-card, .admin-card,
+.plan-card, .pay-box, .lock-banner, .signal-card, .reason, .invalid{
+  box-shadow: var(--shadow-md);
+  border-color: rgba(240,211,213,.8);
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  background-blend-mode: normal;
+  position: relative;
+}
+.plan-card.featured{ box-shadow: var(--shadow-lg); }
+.plan-card.vip{ box-shadow: 0 12px 28px rgba(201,154,46,.22), 0 3px 8px rgba(138,106,26,.18); }
+
+/* recessed surfaces: data readouts feel embossed like a digital display */
+.level-box, .out-box, .mtf-pill, .toast{
+  box-shadow: var(--inset-recess);
+}
+.level-box .v, .out-box .v{ text-shadow: 0 1px 0 rgba(255,255,255,.5); }
+
+/* inputs feel pressed-in, contrasting with raised buttons */
+.field input, .field select, .search-wrap input, .select-wrap select,
+.auth-field input, .coin-picker-search-row input{
+  box-shadow: var(--inset-recess);
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+.field input:focus, .search-wrap input:focus, .select-wrap select:focus, .auth-field input:focus{
+  box-shadow: var(--inset-recess), 0 0 0 3px rgba(200,19,36,.12);
+}
+
+/* buttons: glossy gradient + ledge shadow + tactile press */
+.btn{
+  background: linear-gradient(180deg, #e2192c 0%, var(--red) 55%, var(--red-deep) 100%);
+  box-shadow: 0 2px 0 var(--red-deep), var(--shadow-red);
+  background-image: linear-gradient(180deg, #e2192c 0%, var(--red) 55%, var(--red-deep) 100%), var(--sheen);
+  transition: transform .08s ease, box-shadow .08s ease;
+}
+.btn:active{ transform: translateY(2px); box-shadow: 0 0 0 var(--red-deep), var(--shadow-red-active); }
+.btn.secondary{
+  background-image: linear-gradient(180deg, #ffffff 0%, #fffafa 100%), var(--sheen);
+  box-shadow: var(--shadow-sm), inset 0 0 0 1px rgba(240,211,213,.6);
+}
+.btn.secondary:active{ transform: translateY(1px); box-shadow: var(--shadow-xs); }
+.btn.ghost:active{ transform: translateY(1px); }
+
+/* header controls */
+#headerLoginBtn{ box-shadow: 0 2px 0 var(--red-deep), var(--shadow-red); transition: transform .08s ease; }
+#headerLoginBtn:active{ transform: translateY(2px); box-shadow: 0 0 0 var(--red-deep), var(--shadow-red-active); }
+#settingsGearBtn{ box-shadow: var(--shadow-sm); background: linear-gradient(180deg,#fff,#fff6f6); border-radius: 10px; padding: 4px 6px; }
+
+/* toggles / tabs: raised when active, flat otherwise */
+.mode-btn, .ptab, .tf-chip, .coin-chip, .auth-tab{ transition: box-shadow .12s ease, transform .08s ease; }
+.mode-btn.active, .ptab.active, .tf-chip.active, .coin-chip.active, .auth-tab.active{
+  box-shadow: var(--shadow-sm), 0 1px 0 rgba(0,0,0,.15) inset;
+}
+.fav-btn{ box-shadow: var(--shadow-sm); }
+.fav-btn.active{ box-shadow: var(--inset-recess); }
+.fav-btn:active, .coin-nav-btn:active{ transform: translateY(1px); }
+
+/* modals: frosted glass backdrop + deep elevation + gentle pop-in */
+#settingsOverlay, #loginOverlay{ backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+#settingsOverlay > div, #loginOverlay > div{
+  box-shadow: var(--shadow-lg);
+  animation: modalPop .18s ease-out;
+}
+.coin-picker-overlay.show .coin-picker-sheet{ animation: modalPop .18s ease-out; }
+@keyframes modalPop{ from{ opacity:0; transform: translateY(8px) scale(.98); } to{ opacity:1; transform: translateY(0) scale(1); } }
+.coin-picker-sheet{ box-shadow: var(--shadow-lg); }
+
+/* ticker: subtle glossy top edge */
+.ticker-wrap{ box-shadow: 0 2px 10px rgba(200,19,36,.35), inset 0 1px 0 rgba(255,255,255,.18); }
+
+/* badges/tags/pills feel slightly embossed */
+.tag, .role-badge, .live-badge, .sb-chip, .unavail-list .badge, .premium-badge, .premium-status-btn, .pbadge, .psave{
+  box-shadow: var(--shadow-xs);
+}
+.premium-badge.unlocked, .premium-status-btn.unlocked{ box-shadow: var(--shadow-sm); }
+
+@media (prefers-reduced-motion: reduce){
+  .btn, .btn.secondary, .btn.ghost, #headerLoginBtn, .fav-btn, .coin-nav-btn{ transition:none; }
+  @keyframes modalPop{ from{opacity:1; transform:none;} to{opacity:1; transform:none;} }
+}
 </style>
 </head>
 <body>
@@ -965,14 +1067,23 @@ document.getElementById("goToAdminBtn").onclick = ()=>{
   document.getElementById("loginOverlay").style.display = "none";
   scrollToAdmin();
 };
+/* Mobile Safari can paint the animated ticker bar above fixed-position modals due to how it
+   promotes animated elements onto their own compositing layer — this can make ticker text visually
+   bleed into a modal's top edge. Simplest fix: hide the ticker whenever any modal is open. */
+function setTickerVisible(show){
+  document.querySelector(".ticker-wrap").style.visibility = show ? "visible" : "hidden";
+}
+
 document.getElementById("headerLoginBtn").onclick = ()=>{
   document.getElementById("loginOverlay").style.display = "flex";
+  setTickerVisible(false);
 };
 document.getElementById("loginCloseBtn").onclick = ()=>{
   document.getElementById("loginOverlay").style.display = "none";
+  setTickerVisible(true);
 };
 document.getElementById("loginOverlay").onclick = (e)=>{
-  if(e.target.id === "loginOverlay") e.target.style.display = "none";
+  if(e.target.id === "loginOverlay"){ e.target.style.display = "none"; setTickerVisible(true); }
 };
 
 if(firebaseReady){
@@ -1066,12 +1177,14 @@ renderTrialButton();
 /* ---- settings gear (technical/system status hidden here, off by default) ---- */
 document.getElementById("settingsGearBtn").onclick = ()=>{
   document.getElementById("settingsOverlay").style.display = "flex";
+  setTickerVisible(false);
 };
 document.getElementById("settingsCloseBtn").onclick = ()=>{
   document.getElementById("settingsOverlay").style.display = "none";
+  setTickerVisible(true);
 };
 document.getElementById("settingsOverlay").onclick = (e)=>{
-  if(e.target.id === "settingsOverlay") e.target.style.display = "none";
+  if(e.target.id === "settingsOverlay"){ e.target.style.display = "none"; setTickerVisible(true); }
 };
 
 /* ---- Admin panel: shows for role=="admin" accounts; #admin also reveals it by password (UI only) ---- */
@@ -1216,12 +1329,14 @@ function openCoinPicker(){
   coinPickerSearchEl.value = "";
   renderCoinPicker(searchCoins(""));
   coinOverlayEl.classList.add("show");
+  setTickerVisible(false);
 }
 
 function closeCoinPicker(){
   coinOverlayEl.classList.remove("show");
   coinHighlightIdx = -1;
   coinPickerSearchEl.blur();
+  setTickerVisible(true);
 }
 
 function setCoinHighlight(idx){
@@ -1255,7 +1370,7 @@ function renderCoinPicker(list){
 
 function searchCoins(query){
   const q = query.toUpperCase().trim();
-  if(!q) return allCoins.slice(0,15); // no query yet -> show top coins by volume, so people can see what's available
+  if(!q) return allCoins; // no query yet -> show every available coin, scrollable
   return allCoins.filter(c=>{
     const base = c.symbol.replace("USDT","");
     return c.symbol.startsWith(q) || base.startsWith(q) || base.includes(q);
