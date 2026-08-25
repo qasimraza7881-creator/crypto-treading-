@@ -236,6 +236,15 @@
   .buyopp-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
   .buyopp-status{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft); }
   .buyopp-scan-btn{ width:auto; margin:0; padding:8px 14px; font-size:12px; background:var(--green); }
+  .buyopp-allrow{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 2px 12px; border-bottom:1px dashed var(--red-line); margin-bottom:12px; }
+  .buyopp-allrow .lbl{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink); }
+  .buyopp-allrow .sub{ font-size:10.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; }
+  .switch{ position:relative; display:inline-block; width:42px; height:24px; flex-shrink:0; }
+  .switch input{ opacity:0; width:0; height:0; }
+  .switch .slider{ position:absolute; cursor:pointer; inset:0; background:#d8c9c9; border-radius:24px; transition:.15s; }
+  .switch .slider:before{ content:""; position:absolute; height:18px; width:18px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.15s; }
+  .switch input:checked + .slider{ background:var(--green); }
+  .switch input:checked + .slider:before{ transform:translateX(18px); }
   .buyopp-list{ display:flex; flex-direction:column; gap:8px; }
   .buyopp-item{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:11px 13px; border-radius:12px; border:1.5px solid var(--green); background:var(--green-soft); cursor:pointer; }
   .buyopp-item .sym{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:13.5px; color:var(--ink); }
@@ -557,12 +566,22 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
 
   <div class="engine-title">🟢 Buy Opportunities <span style="font-size:11px; color:var(--ink-soft); font-weight:400; font-family:'IBM Plex Mono',monospace;">— jo coins abhi buy criteria pura kar rahe hain</span></div>
   <div class="card buyopp-card" id="buyOppCard">
+    <div class="buyopp-allrow">
+      <div>
+        <div class="lbl">Scan ALL coins</div>
+        <div class="sub" id="buyOppAllSub">Off — sirf top 15 check ho rahe hain</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="buyOppAllToggle" />
+        <span class="slider"></span>
+      </label>
+    </div>
     <div class="buyopp-head">
       <div class="buyopp-status" id="buyOppStatus">Scan shuru ho raha hai…</div>
       <button class="btn buyopp-scan-btn" id="buyOppScanBtn" type="button">🔄 Rescan</button>
     </div>
     <div class="buyopp-list" id="buyOppList"><div class="buyopp-empty">Scanning…</div></div>
-    <div class="disclaimer" style="margin-top:10px;">Yeh sirf woh coins hain jinka score abhi BUY threshold cross kar raha hai (watchlist + top 15 sabse zyada volume/use wale coins, current entry timeframe pe). Yeh guarantee nahi hai — khud confirm karke hi trade karein.</div>
+    <div class="disclaimer" style="margin-top:10px;" id="buyOppDisclaimer">Yeh sirf woh coins hain jinka score abhi BUY threshold cross kar raha hai (watchlist + top 15 sabse zyada volume/use wale coins, current entry timeframe pe). Yeh guarantee nahi hai — khud confirm karke hi trade karein.</div>
   </div>
 
   <div class="card">
@@ -1316,14 +1335,18 @@ let buyOppScanning = false;
 let buyOppResults = [];
 
 const BUYOPP_SCAN_SIZE = 15;
+let buyOppScanAll = LS.get("xnx_buyopp_scan_all", false);
 function buyOppScanList(){
   // Watchlist coins are always included (user picked them on purpose),
   // topped up with the highest-volume — i.e. most-used — coins from the
   // live Binance list until we hit BUYOPP_SCAN_SIZE. Falls back to the
   // QUICK list if the full coin list hasn't loaded yet.
+  // When "Scan ALL coins" is on, every coin on the live Binance list is
+  // checked instead of just the top BUYOPP_SCAN_SIZE.
   const byVolume = allCoins.length ? allCoins.map(c=>c.symbol) : QUICK;
   const list = [...watchlist, ...byVolume];
-  return [...new Set(list)].slice(0, BUYOPP_SCAN_SIZE);
+  const deduped = [...new Set(list)];
+  return buyOppScanAll ? deduped : deduped.slice(0, BUYOPP_SCAN_SIZE);
 }
 
 async function scanBuyOpportunities(){
@@ -1351,6 +1374,13 @@ async function scanBuyOpportunities(){
   found.sort((a,b)=> b.score - a.score);
   buyOppResults = found;
   const scanTf = ENTRY_TF.toUpperCase();
+
+  const discEl = document.getElementById("buyOppDisclaimer");
+  if(discEl){
+    discEl.textContent = buyOppScanAll
+      ? "Yeh sirf woh coins hain jinka score abhi BUY threshold cross kar raha hai (watchlist + Binance ke har live USDT coin, current entry timeframe pe). Yeh guarantee nahi hai — khud confirm karke hi trade karein."
+      : "Yeh sirf woh coins hain jinka score abhi BUY threshold cross kar raha hai (watchlist + top " + BUYOPP_SCAN_SIZE + " sabse zyada volume/use wale coins, current entry timeframe pe). Yeh guarantee nahi hai — khud confirm karke hi trade karein.";
+  }
 
   if(found.length === 0){
     listEl.innerHTML = `<div class="buyopp-empty">Abhi ${scanTf} pe koi coin BUY criteria pura nahi kar raha. NO_TRADE bhi ek valid result hai.</div>`;
@@ -1501,6 +1531,22 @@ document.getElementById("analyzeBtn").onclick = ()=>{
 };
 
 document.getElementById("buyOppScanBtn").onclick = scanBuyOpportunities;
+
+const buyOppAllToggleEl = document.getElementById("buyOppAllToggle");
+const buyOppAllSubEl = document.getElementById("buyOppAllSub");
+buyOppAllToggleEl.checked = buyOppScanAll;
+function updateBuyOppAllSub(){
+  buyOppAllSubEl.textContent = buyOppScanAll
+    ? "On — watchlist + har live coin check ho raha hai"
+    : "Off — sirf top " + BUYOPP_SCAN_SIZE + " check ho rahe hain";
+}
+updateBuyOppAllSub();
+buyOppAllToggleEl.onchange = () => {
+  buyOppScanAll = buyOppAllToggleEl.checked;
+  LS.set("xnx_buyopp_scan_all", buyOppScanAll);
+  updateBuyOppAllSub();
+  scanBuyOpportunities();
+};
 
 document.getElementById("setupFavBtn").onclick = ()=>{
   const sym = pendingSymbol;
