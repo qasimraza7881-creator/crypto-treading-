@@ -742,6 +742,7 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
       <div class="pay-row"><div><div class="pk">WHATSAPP</div><div class="pv">0313 4586476</div></div><button class="copy-btn" data-copy="03134586476" type="button">Copy</button></div>
       <div class="pay-row"><div><div class="pk">JAZZCASH / EASYPAISA — Qasim Raza</div><div class="pv">0324 4996576</div></div><button class="copy-btn" data-copy="03244996576" type="button">Copy</button></div>
       <div class="pay-row"><div><div class="pk">MEEZAN BANK — Qasim Trader</div><div class="pv">1157 0114385195</div></div><button class="copy-btn" data-copy="11570114385195" type="button">Copy</button></div>
+      <div class="field" style="margin-top:10px;"><label>YOUR GMAIL (auto-filled from sign-in — this is the account admin grants access to)</label><input id="payEmailInput" readonly placeholder="Sign in above first" /></div>
       <div class="field" style="margin-top:10px;"><label>YOUR WHATSAPP NUMBER (so admin can see it &amp; grant you access)</label><input id="payPhoneInput" placeholder="03xxxxxxxxx" /></div>
       <a class="btn" id="waPayBtn" href="#" target="_blank" rel="noopener" style="text-decoration:none; text-align:center; display:block;">Message on WhatsApp to Pay</a>
     </div>
@@ -1144,6 +1145,8 @@ function watchLicense(email){
 function renderAuthUI(){
   document.getElementById("loggedOutView").style.display = currentUser ? "none" : "block";
   document.getElementById("loggedInView").style.display = currentUser ? "block" : "none";
+  document.getElementById("payEmailInput").value = currentUser ? currentUser.email : "";
+  document.getElementById("payEmailInput").placeholder = currentUser ? currentUser.email : "Sign in above first";
   if(currentUser){
     document.getElementById("authUserEmail").textContent = currentUser.email;
     const admin = isAdminAccount();
