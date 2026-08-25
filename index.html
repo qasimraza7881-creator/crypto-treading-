@@ -47,6 +47,17 @@
           request.resource.data.isTrial == true; // users may only self-grant a trial
         allow update, delete: if isAdmin(); // only admin can grant/change/revoke paid plans
       }
+
+      match /purchaseRequests/{reqId} {
+        // a signed-in user can only read their own purchase requests; admin can read all
+        allow read: if request.auth != null &&
+          (resource.data.uid == request.auth.uid || isAdmin());
+        // a signed-in user can submit a request for themself only (email/uid must match their own auth)
+        allow create: if request.auth != null &&
+          request.resource.data.uid == request.auth.uid &&
+          request.resource.data.email == request.auth.token.email.lower();
+        allow update, delete: if isAdmin(); // only admin can mark fulfilled / remove
+      }
     }
   }
   ============================================================
@@ -731,14 +742,25 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
       <div class="pay-row"><div><div class="pk">WHATSAPP</div><div class="pv">0313 4586476</div></div><button class="copy-btn" data-copy="03134586476" type="button">Copy</button></div>
       <div class="pay-row"><div><div class="pk">JAZZCASH / EASYPAISA — Qasim Raza</div><div class="pv">0324 4996576</div></div><button class="copy-btn" data-copy="03244996576" type="button">Copy</button></div>
       <div class="pay-row"><div><div class="pk">MEEZAN BANK — Qasim Trader</div><div class="pv">1157 0114385195</div></div><button class="copy-btn" data-copy="11570114385195" type="button">Copy</button></div>
+      <div class="field" style="margin-top:10px;"><label>YOUR WHATSAPP NUMBER (so admin can see it &amp; grant you access)</label><input id="payPhoneInput" placeholder="03xxxxxxxxx" /></div>
       <a class="btn" id="waPayBtn" href="#" target="_blank" rel="noopener" style="text-decoration:none; text-align:center; display:block;">Message on WhatsApp to Pay</a>
     </div>
 
     <div class="member-status locked" id="memberStatus">STATUS: sign in to check your membership</div>
   </div>
 
-  <div class="engine-title" id="adminTitle" style="display:none;">Admin — Grant Access</div>
-  <div class="admin-card" id="adminPanel" style="display:none;">
+  <div class="engine-title" id="adminTitle" style="display:none;">Admin — Overview</div>
+  <div class="admin-card" id="adminOverviewPanel" style="display:none;">
+    <div class="out-grid">
+      <div class="out-box"><div class="k">REGISTERED ACCOUNTS</div><div class="v" id="admStatUsers">--</div></div>
+      <div class="out-box"><div class="k">ACTIVE ACCOUNTS</div><div class="v" id="admStatActive">--</div></div>
+    </div>
+    <div style="font-size:12px; color:var(--ink-soft); margin-top:14px; font-family:'IBM Plex Mono',monospace;">PURCHASE REQUESTS (email + WhatsApp number submitted at checkout)</div>
+    <table class="mini" id="admPurchaseTable"><thead><tr><th>Email</th><th>Phone</th><th>Plan</th><th></th></tr></thead><tbody><tr><td colspan="4" class="empty-row">Loading…</td></tr></tbody></table>
+    <button class="btn ghost" id="admRefreshBtn" type="button" style="margin-top:10px;">Refresh</button>
+  </div>
+
+  <div class="admin-card" id="adminPanel" style="display:none; margin-top:16px;">
     <div style="font-size:11.5px; color:var(--ink-soft); line-height:1.6; margin-bottom:10px; background:var(--amber-soft); border:1px solid #f0d9a8; border-radius:12px; padding:10px 12px;">
       Note: "Grant Access" only works when you're signed in above with the reserved admin account (<b>qasimraza7881@gmail.com</b>). Firestore rules protect this — even if this panel is visible, granting will fail with "permission-denied" for any other account.
     </div>
@@ -1129,6 +1151,8 @@ function renderAuthUI(){
     document.getElementById("goToAdminBtn").style.display = admin ? "inline-block" : "none";
     document.getElementById("adminTitle").style.display = admin ? "block" : "none";
     document.getElementById("adminPanel").style.display = admin ? "block" : "none";
+    document.getElementById("adminOverviewPanel").style.display = admin ? "block" : "none";
+    if(admin) loadAdminOverview();
   }
 }
 document.getElementById("goToAdminBtn").onclick = ()=>{
@@ -1229,6 +1253,25 @@ updateWaPayBtn();
 renderMemberStatus();
 renderTrialButton();
 
+/* ---- record a purchase request (email + phone + plan) so the admin panel can see it —
+   this does NOT change or block the "Message on WhatsApp to Pay" link, it just also logs it ---- */
+document.getElementById("waPayBtn").addEventListener("click", ()=>{
+  if(!firebaseReady || !fbDb || !currentUser) return; // WhatsApp link still works either way
+  const phoneRaw = document.getElementById("payPhoneInput").value.trim().replace(/\D/g,"");
+  if(!phoneRaw) return; // phone optional — nothing to log without it
+  const plan = PLANS.find(p=>p.id===selectedPlan);
+  fbDb.collection("purchaseRequests").add({
+    uid: currentUser.uid,
+    email: emailKey(currentUser.email),
+    phone: phoneRaw,
+    planId: plan ? plan.id : null,
+    planLabel: plan ? plan.label : "Not selected",
+    price: plan ? plan.price : null,
+    status: "pending",
+    createdAt: Date.now()
+  }).catch(()=>{}); // silent fail — WhatsApp message stays the source of truth if this fails
+});
+
 /* ---- Admin panel: shows automatically for the signed-in admin account (role=="admin"), see renderAuthUI() ---- */
 document.getElementById("adminGenBtn").onclick = ()=>{
   if(!firebaseReady){ toast("Firebase not connected yet — see FIREBASE_CONFIG in the code"); return; }
@@ -1262,6 +1305,63 @@ document.getElementById("adminGenBtn").onclick = ()=>{
     }
   });
 };
+
+/* ---- Admin overview: registered accounts, active accounts, purchase requests ----
+   Only ever called after isAdminAccount() is true (see renderAuthUI), and Firestore
+   rules independently enforce that only the real admin account can actually read
+   the "users" collection in full and the purchaseRequests collection. ---- */
+async function loadAdminOverview(){
+  if(!firebaseReady || !fbDb || !isAdminAccount()) return;
+
+  // registered accounts
+  try{
+    const usersSnap = await fbDb.collection("users").get();
+    document.getElementById("admStatUsers").textContent = usersSnap.size;
+  }catch(e){ document.getElementById("admStatUsers").textContent = "--"; }
+
+  // active accounts (licenses with a future expiry)
+  try{
+    const licSnap = await fbDb.collection("licenses").get();
+    const now = Date.now();
+    let active = 0;
+    licSnap.forEach(doc=>{ const d = doc.data(); if(d && d.expiry && d.expiry > now) active++; });
+    document.getElementById("admStatActive").textContent = active;
+  }catch(e){ document.getElementById("admStatActive").textContent = "--"; }
+
+  // purchase requests
+  const tbody = document.querySelector("#admPurchaseTable tbody");
+  try{
+    const reqSnap = await fbDb.collection("purchaseRequests").orderBy("createdAt","desc").limit(100).get();
+    if(reqSnap.empty){
+      tbody.innerHTML = `<tr><td colspan="4" class="empty-row">No purchase requests yet</td></tr>`;
+    } else {
+      tbody.innerHTML = reqSnap.docs.map(doc=>{
+        const d = doc.data();
+        const priceTxt = d.price ? ("Rs " + d.price.toLocaleString()) : "--";
+        return `<tr>
+          <td>${d.email || "--"}</td>
+          <td>${d.phone || "--"}</td>
+          <td>${d.planLabel || "--"}<br><span style="color:var(--ink-soft);font-size:10.5px;">${priceTxt}</span></td>
+          <td><button class="copy-btn" type="button" data-email="${d.email||''}" data-phone="${d.phone||''}" data-plan="${d.planId||''}">Use</button></td>
+        </tr>`;
+      }).join("");
+      tbody.querySelectorAll("button[data-email]").forEach(btn=>{
+        btn.onclick = ()=>{
+          document.getElementById("adminCustEmail").value = btn.dataset.email;
+          document.getElementById("adminCustPhone").value = btn.dataset.phone;
+          const planSel = document.getElementById("adminPlanSelect");
+          const planMap = { m1:"1", m3:"3", m6:"6", m12:"12", vip:"12-vip" };
+          if(planMap[btn.dataset.plan]) planSel.value = planMap[btn.dataset.plan];
+          document.getElementById("adminPanel").scrollIntoView({ behavior:"smooth", block:"start" });
+          toast("Filled into Grant Access below — review and tap Grant Access");
+        };
+      });
+    }
+  }catch(e){
+    tbody.innerHTML = `<tr><td colspan="4" class="empty-row">Could not load purchase requests</td></tr>`;
+  }
+}
+document.getElementById("admRefreshBtn").onclick = loadAdminOverview;
 
 /* =====================================================
    MODE TOGGLE
