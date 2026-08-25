@@ -158,7 +158,7 @@
   .coin-picker-sheet .coin-opt:last-child{ border-bottom:none; }
   .coin-picker-sheet .coin-opt:active{ background:rgba(255,255,255,.08); }
   .coin-picker-sheet .coin-opt .tick{ width:20px; flex-shrink:0; color:#fff; font-weight:700; }
-  .coin-picker-sheet .coin-opt .sym{ font-weight:600; }
+  .coin-picker-sheet .coin-opt .sym{ font-weight:600; color:#fff; }
   .coin-picker-sheet .cd-empty{ color:#aaa; padding:16px; text-align:center; font-size:13px; }
   .coin-nav-bar{ display:none; align-items:center; justify-content:flex-end; gap:8px; margin-top:6px; }
   .coin-nav-bar.show{ display:flex; }
@@ -414,11 +414,6 @@ html,body{ background:
 .btn.secondary:active{ transform: translateY(1px); box-shadow: var(--shadow-xs); }
 .btn.ghost:active{ transform: translateY(1px); }
 
-/* header controls */
-#headerLoginBtn{ box-shadow: 0 2px 0 var(--red-deep), var(--shadow-red); transition: transform .08s ease; }
-#headerLoginBtn:active{ transform: translateY(2px); box-shadow: 0 0 0 var(--red-deep), var(--shadow-red-active); }
-#settingsGearBtn{ box-shadow: var(--shadow-sm); background: linear-gradient(180deg,#fff,#fff6f6); border-radius: 10px; padding: 4px 6px; }
-
 /* toggles / tabs: raised when active, flat otherwise */
 .mode-btn, .ptab, .tf-chip, .coin-chip, .auth-tab{ transition: box-shadow .12s ease, transform .08s ease; }
 .mode-btn.active, .ptab.active, .tf-chip.active, .coin-chip.active, .auth-tab.active{
@@ -428,12 +423,7 @@ html,body{ background:
 .fav-btn.active{ box-shadow: var(--inset-recess); }
 .fav-btn:active, .coin-nav-btn:active{ transform: translateY(1px); }
 
-/* modals: frosted glass backdrop + deep elevation + gentle pop-in */
-#settingsOverlay, #loginOverlay{ backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-#settingsOverlay > div, #loginOverlay > div{
-  box-shadow: var(--shadow-lg);
-  animation: modalPop .18s ease-out;
-}
+/* modals: gentle pop-in */
 .coin-picker-overlay.show .coin-picker-sheet{ animation: modalPop .18s ease-out; }
 @keyframes modalPop{ from{ opacity:0; transform: translateY(8px) scale(.98); } to{ opacity:1; transform: translateY(0) scale(1); } }
 .coin-picker-sheet{ box-shadow: var(--shadow-lg); }
@@ -448,9 +438,39 @@ html,body{ background:
 .premium-badge.unlocked, .premium-status-btn.unlocked{ box-shadow: var(--shadow-sm); }
 
 @media (prefers-reduced-motion: reduce){
-  .btn, .btn.secondary, .btn.ghost, #headerLoginBtn, .fav-btn, .coin-nav-btn{ transition:none; }
+  .btn, .btn.secondary, .btn.ghost, .fav-btn, .coin-nav-btn{ transition:none; }
   @keyframes modalPop{ from{opacity:1; transform:none;} to{opacity:1; transform:none;} }
 }
+
+/* =====================================================
+   APP-STYLE BOTTOM NAV + TAB PAGES
+   ===================================================== */
+main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+
+[data-page]{ display:none; }
+[data-page].active{ display:block; animation: pageIn .16s ease-out; }
+@keyframes pageIn{ from{ opacity:0; transform:translateY(4px); } to{ opacity:1; transform:translateY(0); } }
+
+.bottom-nav{
+  position:fixed; left:0; right:0; bottom:0; z-index:150;
+  display:flex; justify-content:space-around; align-items:stretch;
+  background:rgba(255,255,255,.92); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  border-top:1.5px solid var(--red-line);
+  padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+  box-shadow:0 -4px 20px rgba(26,18,19,.08);
+}
+.nav-btn{
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  background:none; border:none; padding:6px 2px; border-radius:12px; color:var(--ink-soft);
+  font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.02em;
+  transition:color .12s ease, transform .08s ease;
+}
+.nav-btn .nav-ico{ font-size:19px; line-height:1; filter:grayscale(.4); opacity:.7; }
+.nav-btn.active{ color:var(--red-deep); }
+.nav-btn.active .nav-ico{ filter:none; opacity:1; transform:scale(1.08); }
+.nav-btn:active{ transform:scale(.94); }
+.nav-btn .nav-dot{ width:4px; height:4px; border-radius:50%; background:var(--red); margin-top:1px; opacity:0; }
+.nav-btn.active .nav-dot{ opacity:1; }
 </style>
 </head>
 <body>
@@ -458,78 +478,10 @@ html,body{ background:
 <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack">Loading live prices…</div></div>
 
 <header style="position:relative;">
-  <div style="position:absolute; top:12px; right:16px; display:flex; align-items:center; gap:10px;">
-    <button id="headerLoginBtn" type="button" title="Login / Account" style="background:var(--red); color:#fff; border:none; border-radius:10px; padding:7px 12px; font-size:12px; font-weight:600; font-family:'IBM Plex Mono',monospace; cursor:pointer; line-height:1;">Login</button>
-    <button id="settingsGearBtn" type="button" title="Settings" style="background:none; border:none; font-size:20px; cursor:pointer; line-height:1; color:var(--ink-soft,#666);">⚙️</button>
-  </div>
   <div class="eyebrow"><span id="dataStatusText">DATA_STATUS: CONNECTING</span></div>
   <h1>XNX Trading Analysis</h1>
   <p class="sub">Multi-timeframe decision engine on live Binance market data. Analysis only — you decide, you execute. NO_TRADE is a valid result.</p>
 </header>
-
-<!-- Settings modal: technical/system details live here, hidden from the main page by default -->
-<div id="settingsOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:100; align-items:flex-start; justify-content:center;">
-  <div style="background:#fff; border-radius:16px; max-width:520px; width:92%; margin-top:8vh; max-height:80vh; overflow-y:auto; padding:20px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-      <div class="engine-title" style="margin:0;">Settings</div>
-      <button id="settingsCloseBtn" type="button" style="background:none; border:none; font-size:20px; cursor:pointer;">✕</button>
-    </div>
-    <div class="card">
-      <div class="unavail-list">
-        <div><span class="badge">CONNECTED</span> Live crypto prices &amp; candles — Binance public REST API</div>
-        <div><span class="badge">CONNECTED</span> Analysis engine — runs entirely from real fetched candles</div>
-        <div><span class="badge">SIMULATED</span> Paper trading — real prices, simulated money, stored in this browser only</div>
-        <div><span class="badge">UNAVAILABLE</span> Forex/metals/index live data</div>
-        <div><span class="badge">UNAVAILABLE</span> Real-money live order execution</div>
-        <div><span class="badge">UNAVAILABLE</span> Economic news/calendar feed</div>
-        <div><span class="badge">CONNECTED</span> Login — Google Sign-In &amp; Email/Password</div>
-        <div><span class="badge">CONNECTED</span> Membership &amp; roles</div>
-        <div><span class="badge">UNAVAILABLE</span> Backtesting</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Login modal: kept out of the main dashboard flow, opened from the header "Login" button -->
-<div id="loginOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:100; align-items:flex-start; justify-content:center;">
-  <div style="background:#fff; border-radius:16px; max-width:520px; width:92%; margin-top:8vh; max-height:80vh; overflow-y:auto; padding:20px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-      <div class="engine-title" style="margin:0;">Account</div>
-      <button id="loginCloseBtn" type="button" style="background:none; border:none; font-size:20px; cursor:pointer;">✕</button>
-    </div>
-    <div class="auth-card" id="authCard" style="margin-bottom:0;">
-
-      <div id="loggedOutView">
-        <button class="google-btn" id="googleSignInBtn" type="button">
-          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6 29.6 4 24 4c-7.7 0-14.3 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.8 14.3-5l-6.6-5.6C29.6 35.1 26.9 36 24 36c-5.3 0-9.7-3.1-11.3-7.5l-6.6 5.1C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1 2.7-2.9 4.9-5.3 6.4l6.6 5.6C40.6 36.6 44 30.9 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
-          Continue with Google
-        </button>
-
-        <div class="auth-divider">OR</div>
-
-        <div class="auth-tabs">
-          <div class="auth-tab active" id="tabSignIn">Sign In</div>
-          <div class="auth-tab" id="tabSignUp">Create Account</div>
-        </div>
-        <div class="auth-field"><input type="email" id="authEmail" placeholder="Email" /></div>
-        <div class="auth-field"><input type="password" id="authPass" placeholder="Password" /></div>
-        <a class="auth-link" id="forgotPassBtn" href="#">Forgot password?</a>
-        <button class="btn" id="authSubmitBtn" type="button">Sign In</button>
-      </div>
-
-      <div id="loggedInView" style="display:none;">
-        <div class="account-row">
-          <div class="who">Signed in as <b id="authUserEmail"></b><span class="role-badge" id="authRoleBadge" style="display:none;">ADMIN</span></div>
-          <div style="display:flex; gap:8px;">
-            <button class="btn ghost" id="goToAdminBtn" type="button" style="display:none; margin:0; width:auto;">Admin Panel ↓</button>
-            <button class="btn ghost" id="signOutBtn" type="button" style="margin:0; width:auto;">Sign out</button>
-          </div>
-        </div>
-        <button class="premium-status-btn locked" id="premiumStatusBtn" type="button" onclick="scrollToMembership()">🔒 UNLOCK PREMIUM</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <main>
 
@@ -538,6 +490,7 @@ html,body{ background:
     <button class="mode-btn" id="modePaper" data-mode="PAPER_TRADING">PAPER TRADING</button>
   </div>
 
+  <div class="tab-page active" data-page="home">
   <div class="provider-tabs">
     <div class="ptab active" id="tabCrypto">Crypto · Binance (live)</div>
     <div class="ptab disabled" id="tabForex" title="Needs a licensed forex data provider + API key. Not connected — no fake prices will be shown.">Forex/Metals · not connected</div>
@@ -654,8 +607,10 @@ html,body{ background:
   </div>
 
   <div class="disclaimer">Real Binance market data. No fabricated prices. NO_TRADE is a valid, expected result. This is analysis, not financial advice — no profit is guaranteed.</div>
+  </div><!-- /tab-page: home -->
 
   <!-- Position sizing -->
+  <div class="tab-page" data-page="trade">
   <div class="engine-title">Position Size Calculator</div>
   <div class="card">
     <div class="panel-grid">
@@ -689,8 +644,58 @@ html,body{ background:
     <div class="lock-banner" id="lockBanner" style="display:none;">TRADING_LOCKED — daily loss limit reached. Paper trades are blocked until reset.</div>
     <button class="btn ghost" id="resetDayBtn" type="button">Reset today's risk (new day)</button>
   </div>
+  </div><!-- /tab-page: trade (part 1) -->
 
   <!-- Membership Plans -->
+  <div class="tab-page" data-page="account">
+  <div class="engine-title">Account</div>
+  <div class="auth-card" id="authCard">
+
+    <div id="loggedOutView">
+      <button class="google-btn" id="googleSignInBtn" type="button">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6 29.6 4 24 4c-7.7 0-14.3 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.8 14.3-5l-6.6-5.6C29.6 35.1 26.9 36 24 36c-5.3 0-9.7-3.1-11.3-7.5l-6.6 5.1C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1 2.7-2.9 4.9-5.3 6.4l6.6 5.6C40.6 36.6 44 30.9 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
+        Continue with Google
+      </button>
+
+      <div class="auth-divider">OR</div>
+
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tabSignIn">Sign In</div>
+        <div class="auth-tab" id="tabSignUp">Create Account</div>
+      </div>
+      <div class="auth-field"><input type="email" id="authEmail" placeholder="Email" /></div>
+      <div class="auth-field"><input type="password" id="authPass" placeholder="Password" /></div>
+      <a class="auth-link" id="forgotPassBtn" href="#">Forgot password?</a>
+      <button class="btn" id="authSubmitBtn" type="button">Sign In</button>
+    </div>
+
+    <div id="loggedInView" style="display:none;">
+      <div class="account-row">
+        <div class="who">Signed in as <b id="authUserEmail"></b><span class="role-badge" id="authRoleBadge" style="display:none;">ADMIN</span></div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn ghost" id="goToAdminBtn" type="button" style="display:none; margin:0; width:auto;">Admin Panel ↓</button>
+          <button class="btn ghost" id="signOutBtn" type="button" style="margin:0; width:auto;">Sign out</button>
+        </div>
+      </div>
+      <button class="premium-status-btn locked" id="premiumStatusBtn" type="button" onclick="scrollToMembership()">🔒 UNLOCK PREMIUM</button>
+    </div>
+  </div>
+
+  <div class="engine-title">Settings</div>
+  <div class="card" style="margin-bottom:16px;">
+    <div class="unavail-list">
+      <div><span class="badge">CONNECTED</span> Live crypto prices &amp; candles — Binance public REST API</div>
+      <div><span class="badge">CONNECTED</span> Analysis engine — runs entirely from real fetched candles</div>
+      <div><span class="badge">SIMULATED</span> Paper trading — real prices, simulated money, stored in this browser only</div>
+      <div><span class="badge">UNAVAILABLE</span> Forex/metals/index live data</div>
+      <div><span class="badge">UNAVAILABLE</span> Real-money live order execution</div>
+      <div><span class="badge">UNAVAILABLE</span> Economic news/calendar feed</div>
+      <div><span class="badge">CONNECTED</span> Login — Google Sign-In &amp; Email/Password</div>
+      <div><span class="badge">CONNECTED</span> Membership &amp; roles</div>
+      <div><span class="badge">UNAVAILABLE</span> Backtesting</div>
+    </div>
+  </div>
+
   <div class="engine-title" id="membershipAnchor">Membership Plans</div>
   <div class="member-card">
     <div style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">Analysis dashboard is free to try. <b>Paper Trading, Overnight Monitor &amp; Price Alerts</b> unlock once your account has an active membership.</div>
@@ -736,8 +741,10 @@ html,body{ background:
     <a class="btn secondary" id="adminSendBtn" href="#" target="_blank" rel="noopener" style="display:none; text-decoration:none; text-align:center;">Notify Customer on WhatsApp</a>
     <div style="font-size:11px; color:var(--ink-soft); margin-top:10px; line-height:1.6;">This writes real access directly to your Firestore database, tied to the customer's email — it works the moment they sign in with that email, on any device, and you (as admin) can revoke it any time from the Firebase Console.</div>
   </div>
+  </div><!-- /tab-page: account -->
 
   <!-- Paper trading -->
+  <div class="tab-page" data-page="trade">
   <div class="section-head-row">
     <div class="engine-title">Paper Trading Account</div>
     <button class="premium-badge locked" id="ptPremiumBadge" type="button" onclick="scrollToMembership()">🔒 PREMIUM</button>
@@ -755,8 +762,10 @@ html,body{ background:
     <table class="mini" id="histPosTable"><thead><tr><th>Symbol</th><th>Side</th><th>Result</th><th>P/L</th></tr></thead><tbody></tbody></table>
     <button class="btn ghost" id="resetAccountBtn" type="button">Reset paper account</button>
   </div>
+  </div><!-- /tab-page: trade (part 2) -->
 
   <!-- Watchlist -->
+  <div class="tab-page" data-page="watch">
   <div class="engine-title">Watchlist</div>
   <div class="card">
     <button class="btn secondary" id="addWatchBtn" type="button">+ Add current symbol</button>
@@ -808,15 +817,35 @@ html,body{ background:
     <button class="btn secondary" id="addAlertBtn" type="button">Add alert for current symbol</button>
     <table class="mini" id="alertTable"><thead><tr><th>Symbol</th><th>Condition</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
   </div>
+  </div><!-- /tab-page: watch -->
 
   <!-- Signal history -->
+  <div class="tab-page" data-page="history">
   <div class="engine-title">Signal History</div>
   <div class="card">
     <table class="mini" id="historyTable"><thead><tr><th>Time</th><th>Symbol</th><th>Signal</th><th>Score</th></tr></thead><tbody></tbody></table>
   </div>
-
+  </div><!-- /tab-page: history -->
 
 </main>
+
+<nav class="bottom-nav" id="bottomNav">
+  <button class="nav-btn active" type="button" data-nav="home">
+    <span class="nav-ico">🏠</span><span>Home</span><span class="nav-dot"></span>
+  </button>
+  <button class="nav-btn" type="button" data-nav="trade">
+    <span class="nav-ico">📊</span><span>Trade</span><span class="nav-dot"></span>
+  </button>
+  <button class="nav-btn" type="button" data-nav="watch">
+    <span class="nav-ico">👁️</span><span>Watch</span><span class="nav-dot"></span>
+  </button>
+  <button class="nav-btn" type="button" data-nav="history">
+    <span class="nav-ico">🕒</span><span>History</span><span class="nav-dot"></span>
+  </button>
+  <button class="nav-btn" type="button" data-nav="account">
+    <span class="nav-ico">👤</span><span>Account</span><span class="nav-dot"></span>
+  </button>
+</nav>
 
 <div class="toast" id="toast"></div>
 
@@ -973,14 +1002,16 @@ function isUnlocked(){
   return !!(currentLicense && currentLicense.expiry > Date.now());
 }
 function scrollToMembership(){
-  document.getElementById("loginOverlay").style.display = "none";
-  document.querySelector(".member-card")?.scrollIntoView({ behavior:"smooth", block:"start" });
+  showTab("account");
+  setTimeout(()=>{ document.querySelector(".member-card")?.scrollIntoView({ behavior:"smooth", block:"start" }); }, 60);
 }
 function scrollToAccount(){
-  document.getElementById("loginOverlay").style.display = "flex";
+  showTab("account");
+  setTimeout(()=>{ document.getElementById("authCard")?.scrollIntoView({ behavior:"smooth", block:"start" }); }, 60);
 }
 function scrollToAdmin(){
-  document.getElementById("adminPanel")?.scrollIntoView({ behavior:"smooth", block:"start" });
+  showTab("account");
+  setTimeout(()=>{ document.getElementById("adminPanel")?.scrollIntoView({ behavior:"smooth", block:"start" }); }, 60);
 }
 
 function renderMemberStatus(){
@@ -1073,7 +1104,6 @@ function watchLicense(email){
 function renderAuthUI(){
   document.getElementById("loggedOutView").style.display = currentUser ? "none" : "block";
   document.getElementById("loggedInView").style.display = currentUser ? "block" : "none";
-  const headerBtn = document.getElementById("headerLoginBtn");
   if(currentUser){
     document.getElementById("authUserEmail").textContent = currentUser.email;
     const admin = isAdminAccount();
@@ -1081,13 +1111,9 @@ function renderAuthUI(){
     document.getElementById("goToAdminBtn").style.display = admin ? "inline-block" : "none";
     document.getElementById("adminTitle").style.display = admin ? "block" : "none";
     document.getElementById("adminPanel").style.display = admin ? "block" : "none";
-    if(headerBtn) headerBtn.textContent = "Account";
-  } else if(headerBtn){
-    headerBtn.textContent = "Login";
   }
 }
 document.getElementById("goToAdminBtn").onclick = ()=>{
-  document.getElementById("loginOverlay").style.display = "none";
   scrollToAdmin();
 };
 /* Mobile Safari can paint the animated ticker bar above fixed-position modals due to how it
@@ -1096,18 +1122,6 @@ document.getElementById("goToAdminBtn").onclick = ()=>{
 function setTickerVisible(show){
   document.querySelector(".ticker-wrap").style.visibility = show ? "visible" : "hidden";
 }
-
-document.getElementById("headerLoginBtn").onclick = ()=>{
-  document.getElementById("loginOverlay").style.display = "flex";
-  setTickerVisible(false);
-};
-document.getElementById("loginCloseBtn").onclick = ()=>{
-  document.getElementById("loginOverlay").style.display = "none";
-  setTickerVisible(true);
-};
-document.getElementById("loginOverlay").onclick = (e)=>{
-  if(e.target.id === "loginOverlay"){ e.target.style.display = "none"; setTickerVisible(true); }
-};
 
 if(firebaseReady){
   fbAuth.onAuthStateChanged(async (user)=>{
@@ -1196,19 +1210,6 @@ renderPlans();
 updateWaPayBtn();
 renderMemberStatus();
 renderTrialButton();
-
-/* ---- settings gear (technical/system status hidden here, off by default) ---- */
-document.getElementById("settingsGearBtn").onclick = ()=>{
-  document.getElementById("settingsOverlay").style.display = "flex";
-  setTickerVisible(false);
-};
-document.getElementById("settingsCloseBtn").onclick = ()=>{
-  document.getElementById("settingsOverlay").style.display = "none";
-  setTickerVisible(true);
-};
-document.getElementById("settingsOverlay").onclick = (e)=>{
-  if(e.target.id === "settingsOverlay"){ e.target.style.display = "none"; setTickerVisible(true); }
-};
 
 /* ---- Admin panel: shows for role=="admin" accounts; #admin also reveals it by password (UI only) ---- */
 if(location.hash === "#admin"){
@@ -1547,7 +1548,8 @@ function selectSymbol(sym){
   mtfCache = {};
   startPriceStream(sym);
   runAnalysis();
-  document.getElementById("chart").scrollIntoView({behavior:"smooth", block:"center"});
+  showTab("home");
+  setTimeout(()=>{ document.getElementById("chart").scrollIntoView({behavior:"smooth", block:"center"}); }, 60);
 }
 window.selectSymbol = selectSymbol;
 
@@ -2373,6 +2375,25 @@ function renderOvernight(){
 }
 
 if(overnight.running){ startOvernightTimer(); }
+
+/* =====================================================
+   BOTTOM NAV / TAB PAGES
+   ===================================================== */
+function showTab(name){
+  document.querySelectorAll("[data-page]").forEach(el=>{
+    el.classList.toggle("active", el.dataset.page === name);
+  });
+  document.querySelectorAll(".nav-btn").forEach(btn=>{
+    btn.classList.toggle("active", btn.dataset.nav === name);
+  });
+  window.scrollTo({top:0, behavior:"instant" in window ? "instant" : "auto"});
+  LS.set("xnx_active_tab", name);
+}
+window.showTab = showTab;
+document.querySelectorAll(".nav-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=> showTab(btn.dataset.nav));
+});
+showTab(LS.get("xnx_active_tab", "home"));
 
 /* =====================================================
    INIT
