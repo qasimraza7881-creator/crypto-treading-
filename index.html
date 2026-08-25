@@ -976,7 +976,6 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "268708983883",
   appId: "1:268708983883:web:61c5a0d461bece836649ce"
 };
-const ADMIN_PASSWORD = "Qasim2026"; // change this — used only to reveal the admin panel UI in the browser
 const ADMIN_EMAIL = "qasimraza7881@gmail.com"; // this account is always admin & always has full free access
 const TRIAL_DAYS = 5;
 
@@ -1211,16 +1210,7 @@ updateWaPayBtn();
 renderMemberStatus();
 renderTrialButton();
 
-/* ---- Admin panel: shows for role=="admin" accounts; #admin also reveals it by password (UI only) ---- */
-if(location.hash === "#admin"){
-  const pw = prompt("Admin password:");
-  if(pw === ADMIN_PASSWORD){
-    document.getElementById("adminTitle").style.display = "block";
-    document.getElementById("adminPanel").style.display = "block";
-  } else if(pw !== null){
-    toast("Wrong password");
-  }
-}
+/* ---- Admin panel: shows automatically for the signed-in admin account (role=="admin"), see renderAuthUI() ---- */
 document.getElementById("adminGenBtn").onclick = ()=>{
   if(!firebaseReady){ toast("Firebase not connected yet — see FIREBASE_CONFIG in the code"); return; }
   const rawVal = document.getElementById("adminPlanSelect").value;
@@ -1822,12 +1812,12 @@ function computeSignal(ctx, mtf){
   if(dataStatus !== "CONNECTED"){ gateReasons.push("live data disconnected"); }
   if(!spreadOk){ gateReasons.push("spread abnormal"); }
   if(strongConflict){ gateReasons.push("timeframes strongly conflict"); }
-  if(rr < 1.5){ gateReasons.push("no 1:1.5+ risk/reward setup available"); }
+  if(rr < 1.2){ gateReasons.push("no 1:1.2+ risk/reward setup available"); }
   if(dir==="flat"){ gateReasons.push("entry-timeframe trend unclear"); }
 
-  if(gateReasons.length===0 && dir!=="flat" && score>=70){
+  if(gateReasons.length===0 && dir!=="flat" && score>=60){
     signal = dir==="up" ? "BUY" : "SELL";
-  } else if(gateReasons.length===0 && dir!=="flat" && score>=55){
+  } else if(gateReasons.length===0 && dir!=="flat" && score>=45){
     signal = "WAIT_FOR_ENTRY";
   } else {
     signal = "NO_TRADE";
@@ -1936,7 +1926,7 @@ function renderSignal(r){
   val.textContent = tradingLocked ? "RISK_LOCKED" : r.signal.replace(/_/g," ");
   fill.className = "conf-fill " + cls;
   fill.style.width = r.score+"%";
-  document.getElementById("confScore").textContent = r.score + " / 100" + (r.score>=90?" · Very strong": r.score>=80?" · Strong": r.score>=70?" · Setup":" · Below threshold");
+  document.getElementById("confScore").textContent = r.score + " / 100" + (r.score>=90?" · Very strong": r.score>=80?" · Strong": r.score>=60?" · Setup":" · Below threshold");
 
   document.getElementById("scoreBreakdown").innerHTML = r.breakdown.map(b=>`<span class="sb-chip">${b[0]} ${b[1]}/${b[2]}</span>`).join("");
 
