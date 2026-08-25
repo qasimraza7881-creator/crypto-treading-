@@ -233,6 +233,25 @@
   .unavail-list{ font-size:12.5px; color:var(--ink-soft); line-height:1.9; }
   .unavail-list .badge{ display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:9.5px; font-weight:700; background:var(--surface-2); color:var(--ink-soft); border-radius:6px; padding:2px 6px; margin-right:6px; }
 
+  .setup-card{ border:1.5px solid var(--red-line); border-radius:20px; background:var(--surface); padding:20px; margin-bottom:16px; }
+  .setup-kicker{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px; }
+  .setup-current{ font-family:'Fraunces',serif; font-weight:600; font-size:19px; line-height:1.3; margin-bottom:16px; }
+  .setup-field{ margin-bottom:12px; }
+  .setup-field label{ display:block; font-size:11px; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft); letter-spacing:.06em; margin-bottom:6px; }
+  .select-wrap{ position:relative; }
+  .select-wrap select{ width:100%; appearance:none; -webkit-appearance:none; border:1.5px solid var(--red-line); background:#fff; border-radius:12px; padding:12px 34px 12px 14px; font-size:16px; font-family:'IBM Plex Mono',monospace; color:var(--ink); outline:none; }
+  .select-wrap::after{ content:"⌄"; position:absolute; right:14px; top:50%; transform:translateY(-55%); color:var(--ink-soft); font-size:16px; pointer-events:none; }
+  .setup-btn-row{ display:flex; gap:8px; margin-top:16px; }
+  .setup-btn-row .btn{ margin-top:0; }
+  .fav-btn{ width:48px; flex:none; border:1.5px solid var(--red-line); background:#fff; border-radius:12px; font-size:18px; color:var(--red-deep); }
+  .fav-btn.active{ background:var(--red-soft); border-color:#f2c2c5; }
+  .auto-refresh-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:16px; padding:12px 14px; background:#fff; border:1px solid var(--red-line); border-radius:14px; font-size:12px; color:var(--ink-soft); }
+  .auto-refresh-row input{ width:38px; height:22px; accent-color:var(--red); flex:none; }
+  .setup-result{ margin-top:14px; padding:14px; border-radius:14px; background:#fff; border:1px solid var(--red-line); }
+  .setup-result .k{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-soft); letter-spacing:.08em; text-transform:uppercase; margin-bottom:4px; }
+  .setup-result .v{ font-family:'Fraunces',serif; font-weight:700; font-size:17px; }
+  .setup-result .v.buy{ color:var(--green); } .setup-result .v.sell{ color:var(--red); }
+
   .toast{ position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 16px; border-radius:12px; font-size:12.5px; font-family:'IBM Plex Mono',monospace; z-index:50; opacity:0; transition:opacity .3s; pointer-events:none; }
   .toast.show{ opacity:1; }
 
@@ -381,13 +400,51 @@
     <div class="ptab disabled" id="tabForex" title="Needs a licensed forex data provider + API key. Not connected — no fake prices will be shown.">Forex/Metals · not connected</div>
   </div>
 
-  <div class="selector-row">
-    <div class="search-wrap">
-      <input id="coinSearch" list="coinDatalist" autocomplete="off" autocapitalize="characters" placeholder="Search any coin — BTC, ETH, SOL..." />
-      <datalist id="coinDatalist"></datalist>
-      <div class="coin-dropdown" id="coinDropdown"></div>
+  <div class="engine-title">Analyze Setup</div>
+  <div class="setup-card">
+    <div class="setup-kicker">CURRENT SETUP</div>
+    <div class="setup-current" id="setupCurrentText">Coin select karke ANALYZE dabayein</div>
+
+    <div class="setup-field">
+      <label>COIN</label>
+      <div class="search-wrap">
+        <input id="coinSearch" list="coinDatalist" autocomplete="off" autocapitalize="characters" placeholder="Search any coin — BTC, ETH, SOL..." />
+        <datalist id="coinDatalist"></datalist>
+        <div class="coin-dropdown" id="coinDropdown"></div>
+      </div>
     </div>
-    <div class="status-pill" id="statusPill"><span class="dot"></span><span id="statusText">connecting</span></div>
+
+    <div class="setup-field">
+      <label>TIMEFRAME</label>
+      <div class="select-wrap">
+        <select id="tfSelect">
+          <option value="5m">5m</option>
+          <option value="15m" selected>15m</option>
+          <option value="1h">1h</option>
+          <option value="4h">4h</option>
+          <option value="1d">1d</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="setup-btn-row">
+      <button class="btn" id="analyzeBtn" type="button" style="flex:1;">ANALYZE</button>
+      <button class="fav-btn" id="setupFavBtn" type="button" title="Add to watchlist">☆</button>
+    </div>
+
+    <label class="auto-refresh-row">
+      <span>🔄 Auto-refresh (har 60 second mein signal khud refresh hoga)</span>
+      <input type="checkbox" id="autoRefreshToggle" checked />
+    </label>
+
+    <div class="setup-result" id="setupResultBox">
+      <div class="k">Final Result</div>
+      <div class="v" id="setupResultText">Coin select karke ANALYZE dabayein</div>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+      <div class="status-pill" id="statusPill"><span class="dot"></span><span id="statusText">connecting</span></div>
+    </div>
   </div>
 
   <div class="coin-list" id="quickCoins"></div>
@@ -564,7 +621,7 @@
    XNX TRADING ANALYSIS — CONFIG
    ===================================================== */
 const REST = "https://api.binance.com";
-const ENTRY_TF = "15m";
+let ENTRY_TF = "15m";
 const CONTEXT_TFS = ["5m","1h","4h","1d"]; // + ENTRY_TF = full multi-timeframe stack
 const ALL_TF_ORDER = ["5m","15m","1h","4h","1d"];
 let allCoins = [];
@@ -996,6 +1053,8 @@ function formatPrice(p){
 const coinSearchEl = document.getElementById("coinSearch");
 const coinDropdownEl = document.getElementById("coinDropdown");
 
+let pendingSymbol = currentSymbol; // coin chosen in the Analyze Setup card, applied when ANALYZE is pressed
+
 function renderCoinDropdown(list){
   if(!list.length){
     coinDropdownEl.innerHTML = `<div class="cd-empty">No matching coin — try BTC, ETH, SOL, DOGE...</div>`;
@@ -1016,8 +1075,9 @@ function renderCoinDropdown(list){
     opt.addEventListener("click", ()=>{
       const sym = opt.dataset.sym;
       coinSearchEl.value = sym;
+      pendingSymbol = sym;
       coinDropdownEl.classList.remove("show");
-      selectSymbol(sym);
+      updateSetupCurrentText();
     });
   });
 }
@@ -1036,22 +1096,67 @@ coinSearchEl.addEventListener("input", ()=> renderCoinDropdown(searchCoins(coinS
 coinSearchEl.addEventListener("change", (e)=>{
   const val = e.target.value.toUpperCase().trim();
   const match = allCoins.find(c => c.symbol === val) || allCoins.find(c => c.symbol === val + "USDT");
-  if(match){ coinDropdownEl.classList.remove("show"); selectSymbol(match.symbol); }
+  if(match){ coinDropdownEl.classList.remove("show"); pendingSymbol = match.symbol; updateSetupCurrentText(); }
 });
 coinSearchEl.addEventListener("keydown", (e)=>{
   if(e.key === "Enter"){
     const val = coinSearchEl.value.toUpperCase().trim();
     const exact = allCoins.find(c => c.symbol === val) || allCoins.find(c => c.symbol === val + "USDT");
     const first = exact || searchCoins(coinSearchEl.value)[0];
-    if(first){ coinSearchEl.value = first.symbol; coinDropdownEl.classList.remove("show"); selectSymbol(first.symbol); coinSearchEl.blur(); }
+    if(first){ coinSearchEl.value = first.symbol; pendingSymbol = first.symbol; coinDropdownEl.classList.remove("show"); coinSearchEl.blur(); document.getElementById("analyzeBtn").click(); }
   }
 });
 document.addEventListener("click", (e)=>{
   if(!e.target.closest(".search-wrap")) coinDropdownEl.classList.remove("show");
 });
 
+/* ---- Analyze Setup card: COIN + TIMEFRAME + ANALYZE button + auto-refresh ---- */
+function updateSetupCurrentText(){
+  const tf = document.getElementById("tfSelect").value;
+  document.getElementById("setupCurrentText").textContent = `${pendingSymbol.replace("USDT","/USDT")} · ${tf.toUpperCase()} — ANALYZE dabayein`;
+}
+document.getElementById("tfSelect").addEventListener("change", updateSetupCurrentText);
+
+document.getElementById("analyzeBtn").onclick = ()=>{
+  const tf = document.getElementById("tfSelect").value;
+  ENTRY_TF = tf;
+  renderTfRow();
+  document.getElementById("tfBadge").textContent = "entry timeframe · " + tf.toUpperCase();
+  selectSymbol(pendingSymbol);
+  document.getElementById("setupCurrentText").textContent = `${pendingSymbol.replace("USDT","/USDT")} · ${tf.toUpperCase()} — analyzing…`;
+};
+
+document.getElementById("setupFavBtn").onclick = ()=>{
+  const sym = pendingSymbol;
+  const btn = document.getElementById("setupFavBtn");
+  if(!watchlist.includes(sym)){
+    watchlist.push(sym); saveAll(); renderWatchTable();
+    btn.textContent = "★"; btn.classList.add("active");
+    toast(sym + " watchlist mein add ho gaya");
+  } else {
+    watchlist = watchlist.filter(s=>s!==sym); saveAll(); renderWatchTable();
+    btn.textContent = "☆"; btn.classList.remove("active");
+    toast(sym + " watchlist se remove ho gaya");
+  }
+};
+
+let autoRefreshTimer = null;
+function startAutoRefresh(){
+  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(runAnalysis, 60000); // "har 60 second mein signal khud refresh hoga"
+}
+function stopAutoRefresh(){
+  if(autoRefreshTimer){ clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+}
+document.getElementById("autoRefreshToggle").addEventListener("change", (e)=>{
+  if(e.target.checked){ startAutoRefresh(); toast("Auto-refresh ON — har 60 second mein signal refresh hoga"); }
+  else { stopAutoRefresh(); toast("Auto-refresh OFF — ab ANALYZE khud dabana hoga"); }
+});
+
 function selectSymbol(sym){
   currentSymbol = sym;
+  pendingSymbol = sym;
+  document.getElementById("coinSearch").value = sym;
   document.getElementById("pairName").textContent = sym;
   renderQuickCoins();
   mtfCache = {};
@@ -1406,6 +1511,13 @@ function renderSignal(r){
   document.getElementById("confScore").textContent = r.score + " / 100" + (r.score>=90?" · Very strong": r.score>=80?" · Strong": r.score>=70?" · Setup":" · Below threshold");
 
   document.getElementById("scoreBreakdown").innerHTML = r.breakdown.map(b=>`<span class="sb-chip">${b[0]} ${b[1]}/${b[2]}</span>`).join("");
+
+  // mirror into the Analyze Setup card's "Final Result" box
+  const setupResultText = document.getElementById("setupResultText");
+  const setupResultCls = r.signal==="BUY" ? "buy" : r.signal==="SELL" ? "sell" : "";
+  setupResultText.className = "v " + setupResultCls;
+  setupResultText.textContent = `${currentSymbol.replace("USDT","/USDT")} · ${ENTRY_TF.toUpperCase()} — ${r.signal.replace(/_/g," ")} (${r.score}/100)`;
+  document.getElementById("setupCurrentText").textContent = `${currentSymbol.replace("USDT","/USDT")} · ${ENTRY_TF.toUpperCase()} — last analyzed just now`;
 
   const tradable = r.signal==="BUY" || r.signal==="SELL";
   document.getElementById("entryVal").textContent = tradable ? formatPrice(r.entry) : "--";
@@ -1840,6 +1952,10 @@ if(overnight.running){ startOvernightTimer(); }
    INIT
    ===================================================== */
 renderTfRow();
+document.getElementById("coinSearch").value = currentSymbol;
+document.getElementById("setupFavBtn").textContent = watchlist.includes(currentSymbol) ? "★" : "☆";
+if(watchlist.includes(currentSymbol)) document.getElementById("setupFavBtn").classList.add("active");
+updateSetupCurrentText();
 renderWatchTable();
 renderAlertTable();
 renderHistoryTable();
@@ -1848,7 +1964,7 @@ renderRisk();
 renderOvernight();
 loadCoinList().then(runAnalysis);
 setInterval(loadCoinList, 30000);
-setInterval(runAnalysis, 20000);
+if(document.getElementById("autoRefreshToggle").checked) startAutoRefresh();
 setInterval(renderOvernight, 60000); // keep "last scan X min ago" and morning verdict fresh
 setInterval(async ()=>{ if(currentSymbol) mtfCache = await loadContextTimeframes(currentSymbol); }, 90000);
 </script>
