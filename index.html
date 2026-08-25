@@ -1,0 +1,1856 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+  FIRESTORE SECURITY RULES — paste this into:
+  Firebase Console → Firestore Database → Rules tab → Publish
+  (This part is NOT part of the website itself — Firebase
+  rules live on Firebase's servers, not in this HTML file —
+  it's included here as a comment just so everything you need
+  is in one file.)
+  ============================================================
+
+  rules_version = '2';
+  service cloud.firestore {
+    match /databases/{database}/documents {
+
+      function isAdmin() {
+        return request.auth != null &&
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+      }
+
+      function isReservedAdminEmail() {
+        return request.auth != null &&
+          request.auth.token.email.lower() == "qasimraza7881@gmail.com";
+      }
+
+      match /users/{uid} {
+        allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+
+        allow create: if request.auth != null && request.auth.uid == uid &&
+          (request.resource.data.role == "user" ||
+           (request.resource.data.role == "admin" && isReservedAdminEmail()));
+
+        allow update: if request.auth != null && request.auth.uid == uid &&
+          (request.resource.data.role == resource.data.role ||
+           (request.resource.data.role == "admin" && isReservedAdminEmail()));
+        // role can't be changed by the user themself except this one reserved
+        // admin email self-healing into "admin" — every other promotion must be
+        // done manually in the Firebase Console by an existing admin.
+      }
+
+      match /licenses/{email} {
+        allow read: if request.auth != null &&
+          (request.auth.token.email.lower() == email || isAdmin());
+        allow create: if request.auth != null &&
+          request.auth.token.email.lower() == email &&
+          request.resource.data.isTrial == true; // users may only self-grant a trial
+        allow update, delete: if isAdmin(); // only admin can grant/change/revoke paid plans
+      }
+    }
+  }
+  ============================================================
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>XNX Trading Analysis — Real-Time Multi-Asset Market Signals</title>
+
+<meta name="description" content="XNX Trading Analysis gives real-time BUY/SELL/NO-TRADE signals across every major crypto pair, with live entry, stop-loss, and take-profit levels calculated from real Binance market data. Free analysis dashboard, no signup." />
+<meta name="keywords" content="crypto trading signals, buy sell indicator, trading analysis, stop loss calculator, XNX trading, live crypto prices, technical analysis dashboard" />
+<meta name="robots" content="index, follow" />
+<meta name="author" content="XNX Trading" />
+<link rel="canonical" href="https://xnxtrading.app/" />
+<meta name="theme-color" content="#c81324" />
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="XNX Trading Analysis" />
+<meta property="og:title" content="XNX Trading Analysis — Real-Time Multi-Asset Market Signals" />
+<meta property="og:description" content="Live BUY/SELL/NO-TRADE signals, entry zones, stop-loss and take-profit levels — calculated from real market data across every major crypto pair." />
+<meta property="og:url" content="https://xnxtrading.app/" />
+<meta property="og:locale" content="en_US" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="XNX Trading Analysis — Real-Time Multi-Asset Market Signals" />
+<meta name="twitter:description" content="Live BUY/SELL/NO-TRADE signals with entry, stop-loss & take-profit — powered by real market data." />
+
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23c81324'/%3E%3Ctext x='50' y='68' font-size='55' font-family='Georgia,serif' font-weight='700' fill='white' text-anchor='middle'%3EX%3C/text%3E%3C/svg%3E" />
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "XNX Trading Analysis",
+  "url": "https://xnxtrading.app/",
+  "applicationCategory": "FinanceApplication",
+  "operatingSystem": "Any (Web Browser)",
+  "description": "Real-time multi-asset trading analysis dashboard. Generates BUY, SELL, or NO-TRADE signals with entry zones, stop-loss, and take-profit levels from live Binance market data.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- Firebase (Auth + Firestore) — see FIREBASE_CONFIG below in the script to connect your own project -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#fff6f6; --surface-2:#fff0f0;
+    --ink:#1a1213; --ink-soft:#7a5a5c;
+    --red:#c81324; --red-deep:#8f0d1a; --red-line:#f0d3d5;
+    --green:#0e8a3e; --green-soft:#e6f6ec; --red-soft:#fbe7e8;
+    --amber:#a86a00; --amber-soft:#fff3e0;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif; touch-action:manipulation; -webkit-text-size-adjust:100%; text-size-adjust:100%;}
+  ::selection{background:var(--red);color:#fff;}
+  button{font-family:inherit;cursor:pointer;}
+
+  .ticker-wrap{ background:linear-gradient(90deg,#c81324,#8f0d1a); overflow:hidden; white-space:nowrap; border-bottom:1px solid #6e0a14; height:34px; display:flex; align-items:center; box-shadow:0 2px 10px rgba(200,19,36,.35); }
+  .ticker-track{ display:inline-flex; gap:28px; animation:scroll 40s linear infinite; padding-left:100%; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#ffe3e5; }
+  .ticker-track span.up{color:#7cf3a0;} .ticker-track span.down{color:#ffb3b8;}
+  @keyframes scroll{ from{transform:translateX(0);} to{transform:translateX(-100%);} }
+
+  header{ padding:22px 20px 6px; }
+  .eyebrow{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--red); font-weight:600; display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  h1{ font-family:'Fraunces',serif; font-weight:700; font-size:30px; line-height:1.05; margin:6px 0 6px; letter-spacing:-0.01em; }
+  .sub{color:var(--ink-soft); font-size:14px; margin:0 0 14px; max-width:520px;}
+
+  main{ padding:0 16px 60px; max-width:640px; margin:0 auto; }
+
+  /* mode toggle */
+  .mode-row{ display:flex; gap:8px; margin-bottom:14px; }
+  .mode-btn{ flex:1; border:1.5px solid var(--red-line); background:#fff; border-radius:12px; padding:9px 8px; font-size:12px; font-weight:600; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft); text-align:center; }
+  .mode-btn.active{ background:var(--red); border-color:var(--red); color:#fff; }
+
+  .selector-row{ display:flex; gap:8px; margin-bottom:10px; }
+  .search-wrap{ position:relative; flex:1; }
+  .search-wrap input{ width:100%; border:1.5px solid var(--red-line); background:var(--surface); border-radius:12px; padding:12px 14px; font-size:16px; font-family:'IBM Plex Mono',monospace; color:var(--ink); outline:none; }
+  .search-wrap input:focus{ border-color:var(--red); }
+  .coin-dropdown{ position:absolute; top:calc(100% + 6px); left:0; right:0; background:#fff; border:1.5px solid var(--red-line); border-radius:14px; max-height:280px; overflow-y:auto; z-index:60; box-shadow:0 12px 30px rgba(26,18,19,.15); display:none; }
+  .coin-dropdown.show{ display:block; }
+  .coin-opt{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:11px 14px; font-family:'IBM Plex Mono',monospace; font-size:12.5px; border-bottom:1px solid var(--red-line); }
+  .coin-opt:last-child{ border-bottom:none; }
+  .coin-opt:active{ background:var(--surface-2); }
+  .coin-opt .sym{ font-weight:700; color:var(--ink); }
+  .coin-opt .px{ color:var(--ink-soft); }
+  .coin-opt .chg.up{ color:var(--green); } .coin-opt .chg.down{ color:var(--red); }
+  .coin-dropdown .cd-empty{ padding:14px; text-align:center; color:var(--ink-soft); font-size:12px; }
+  .status-pill{ display:flex; align-items:center; gap:6px; padding:0 12px; border-radius:12px; background:var(--green-soft); color:var(--green); font-size:12px; font-weight:600; font-family:'IBM Plex Mono',monospace; white-space:nowrap; }
+  .status-pill.bad{ background:var(--red-soft); color:var(--red-deep); }
+  .dot{ width:6px;height:6px;border-radius:50%;background:currentColor; animation:pulse 1.6s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  .provider-tabs{ display:flex; gap:8px; margin-bottom:12px; }
+  .ptab{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; padding:7px 12px; border-radius:10px; border:1.5px solid var(--red-line); background:#fff; color:var(--ink-soft); }
+  .ptab.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  .ptab.disabled{ opacity:.5; }
+
+  .tf-row{ display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+  .tf-chip{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; padding:6px 10px; border-radius:9px; border:1.5px solid var(--red-line); background:#fff; color:var(--ink); }
+  .tf-chip.active{ background:var(--red-deep); color:#fff; border-color:var(--red-deep); }
+
+  .card{ border:1.5px solid var(--red-line); border-radius:20px; background:var(--surface); padding:20px; margin-bottom:16px; }
+  .card-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px; }
+  .pair-name{ font-family:'Fraunces',serif; font-weight:600; font-size:22px; }
+  .tf-badge{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft); }
+  .live-badge{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:.08em; background:var(--red); color:#fff; padding:4px 9px; border-radius:8px; }
+  canvas{ width:100%; height:220px; display:block; touch-action:none; }
+  .price-row{ display:flex; justify-content:space-between; margin-top:10px; font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink-soft); }
+  .price-row b{ color:var(--ink); font-size:18px; font-family:'IBM Plex Mono',monospace; }
+
+  .mtf-row{ display:flex; gap:6px; margin-top:12px; flex-wrap:wrap; }
+  .mtf-pill{ flex:1; min-width:56px; text-align:center; border-radius:10px; padding:7px 4px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; border:1.5px solid var(--red-line); background:#fff; }
+  .mtf-pill .lbl{ display:block; color:var(--ink-soft); font-size:9.5px; margin-bottom:3px; }
+  .mtf-pill.up{ background:var(--green-soft); color:var(--green); border-color:#c3ead0; }
+  .mtf-pill.down{ background:var(--red-soft); color:var(--red); border-color:#f2c2c5; }
+  .mtf-pill.flat{ color:var(--ink-soft); }
+
+  .engine-title{ font-family:'Fraunces',serif; font-size:19px; font-weight:600; margin:22px 0 12px; }
+  .signal-card{ border-radius:20px; padding:22px; border:1.5px solid var(--red-line); }
+  .signal-card.buy{ background:var(--green-soft); border-color:#c3ead0; }
+  .signal-card.sell{ background:var(--red-soft); border-color:#f2c2c5; }
+  .signal-card.none{ background:var(--surface-2); }
+  .signal-card.locked{ background:var(--amber-soft); border-color:#f0d9a8; }
+  .signal-label{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); }
+  .signal-value{ font-family:'Fraunces',serif; font-weight:700; font-size:40px; margin:4px 0 12px; }
+  .signal-value.buy{ color:var(--green); }
+  .signal-value.sell{ color:var(--red); }
+  .signal-value.none{ color:var(--ink-soft); font-size:28px; }
+  .signal-value.locked{ color:var(--amber); font-size:26px; }
+  .conf-label{ font-size:13px; color:var(--ink-soft); margin-bottom:6px; }
+  .conf-bar{ height:10px; border-radius:6px; background:#ffffffaa; overflow:hidden; margin-bottom:6px; }
+  .conf-fill{ height:100%; border-radius:6px; transition:width .5s ease; }
+  .conf-fill.buy{ background:var(--green); } .conf-fill.sell{ background:var(--red); } .conf-fill.none{ background:var(--ink-soft); }
+  .conf-score{ font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; }
+
+  .score-breakdown{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .sb-chip{ font-family:'IBM Plex Mono',monospace; font-size:10px; background:#fff; border:1px solid var(--red-line); border-radius:8px; padding:4px 7px; color:var(--ink-soft); }
+
+  .levels{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
+  .level-box{ background:#fff; border:1px solid var(--red-line); border-radius:14px; padding:12px 14px; }
+  .level-box .k{ font-size:11.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; margin-bottom:2px;}
+  .level-box .v{ font-size:16px; font-weight:700; font-family:'IBM Plex Mono',monospace; }
+  .level-box.entry .v{ color:var(--red-deep); } .level-box.sl .v{ color:var(--red); } .level-box.tp .v{ color:var(--green); }
+
+  .reason{ margin-top:16px; font-size:13.5px; line-height:1.5; color:var(--ink); background:#fff; border:1px solid var(--red-line); border-radius:14px; padding:12px 14px; }
+  .reason b{ color:var(--red-deep); }
+  .invalid{ margin-top:10px; font-size:12.5px; color:var(--red-deep); background:#fff; border:1px dashed var(--red-line); border-radius:14px; padding:10px 14px; }
+
+  .disclaimer{ margin-top:18px; font-size:11.5px; color:var(--ink-soft); text-align:center; line-height:1.5; }
+  .coin-list{ display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; margin-bottom:14px; }
+  .coin-chip{ font-family:'IBM Plex Mono',monospace; font-size:12px; padding:7px 12px; border-radius:10px; border:1.5px solid var(--red-line); background:#fff; color:var(--ink); }
+  .coin-chip.active{ background:var(--red); color:#fff; border-color:var(--red); }
+
+  /* generic panel styling reused for risk / sizing / paper / watchlist / alerts / history */
+  .panel-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .field{ display:flex; flex-direction:column; gap:4px; }
+  .field label{ font-size:11px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; }
+  .field input, .field select{ border:1.5px solid var(--red-line); border-radius:10px; padding:9px 10px; font-size:16px; font-family:'IBM Plex Mono',monospace; background:#fff; }
+  .btn{ border:none; background:var(--red); color:#fff; border-radius:12px; padding:12px 14px; font-weight:600; font-size:13.5px; margin-top:10px; width:100%; }
+  .btn.secondary{ background:#fff; color:var(--red-deep); border:1.5px solid var(--red-line); }
+  .btn.ghost{ background:transparent; color:var(--ink-soft); border:1px solid var(--red-line); font-weight:500; padding:8px 10px; font-size:12px; margin-top:6px; }
+  .out-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+  .out-box{ background:#fff; border:1px solid var(--red-line); border-radius:12px; padding:10px 12px; }
+  .out-box .k{ font-size:10.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; } .out-box .v{ font-size:15px; font-weight:700; font-family:'IBM Plex Mono',monospace; }
+
+  .risk-bar{ height:8px; border-radius:5px; background:#fff; border:1px solid var(--red-line); overflow:hidden; margin:8px 0; }
+  .risk-fill{ height:100%; background:var(--red); }
+  .lock-banner{ background:var(--amber-soft); border:1.5px solid #f0d9a8; color:var(--amber); border-radius:14px; padding:12px 14px; font-size:13px; font-weight:600; margin-top:10px; }
+
+  table.mini{ width:100%; border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:12px; margin-top:10px; }
+  table.mini th{ text-align:left; color:var(--ink-soft); font-weight:600; padding:6px 4px; border-bottom:1.5px solid var(--red-line); font-size:10.5px; }
+  table.mini td{ padding:7px 4px; border-bottom:1px solid var(--red-line); }
+  table.mini tr:last-child td{ border-bottom:none; }
+  .tag{ font-size:10px; padding:2px 6px; border-radius:6px; font-weight:700; }
+  .tag.buy{ background:var(--green-soft); color:var(--green); } .tag.sell{ background:var(--red-soft); color:var(--red-deep); } .tag.open{ background:var(--amber-soft); color:var(--amber); }
+  .empty-row{ color:var(--ink-soft); font-size:12.5px; text-align:center; padding:14px 0; }
+
+  .unavail-list{ font-size:12.5px; color:var(--ink-soft); line-height:1.9; }
+  .unavail-list .badge{ display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:9.5px; font-weight:700; background:var(--surface-2); color:var(--ink-soft); border-radius:6px; padding:2px 6px; margin-right:6px; }
+
+  .toast{ position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 16px; border-radius:12px; font-size:12.5px; font-family:'IBM Plex Mono',monospace; z-index:50; opacity:0; transition:opacity .3s; pointer-events:none; }
+  .toast.show{ opacity:1; }
+
+  /* membership / plans / license */
+  .member-card{ border-radius:20px; padding:20px; border:1.5px solid var(--red-line); background:linear-gradient(180deg,#fff6f6,#fff); margin-bottom:16px; }
+  .plan-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+  .plan-card{ position:relative; border:1.5px solid var(--red-line); border-radius:16px; padding:14px 10px; background:#fff; text-align:center; }
+  .plan-card.featured{ border-color:var(--red); background:var(--red-soft); }
+  .plan-card.selected{ border-color:var(--red-deep); border-width:2.5px; box-shadow:0 0 0 3px rgba(200,19,36,.12); }
+  .plan-card .pname{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.06em; }
+  .plan-card .pprice{ font-family:'Fraunces',serif; font-weight:700; font-size:19px; margin:6px 0 2px; }
+  .plan-card .pper{ font-size:10px; color:var(--ink-soft); }
+  .plan-card .psave{ display:inline-block; margin-top:6px; font-size:9.5px; font-weight:700; background:var(--green-soft); color:var(--green); border-radius:8px; padding:2px 7px; }
+  .plan-card .pbadge{ position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:var(--red); color:#fff; font-size:9px; font-weight:700; padding:3px 9px; border-radius:8px; font-family:'IBM Plex Mono',monospace; white-space:nowrap; }
+
+  .pay-box{ background:#fff; border:1px solid var(--red-line); border-radius:14px; padding:14px; margin-top:16px; }
+  .pay-title{ font-size:10.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; margin-bottom:8px; }
+  .pay-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; border-bottom:1px dashed var(--red-line); }
+  .pay-row:last-child{ border-bottom:none; }
+  .pay-row .pk{ color:var(--ink-soft); font-size:10.5px; font-family:'IBM Plex Mono',monospace; }
+  .pay-row .pv{ font-weight:700; font-family:'IBM Plex Mono',monospace; font-size:14px; }
+  .copy-btn{ font-size:10.5px; border:1px solid var(--red-line); background:#fff; border-radius:8px; padding:5px 9px; color:var(--red-deep); font-family:'IBM Plex Mono',monospace; white-space:nowrap; }
+
+  .unlock-row{ display:flex; gap:8px; margin-top:12px; }
+  .unlock-row input{ flex:1; border:1.5px solid var(--red-line); border-radius:10px; padding:10px 12px; font-family:'IBM Plex Mono',monospace; font-size:16px; text-transform:uppercase; }
+  .member-status{ margin-top:10px; font-size:12px; font-family:'IBM Plex Mono',monospace; }
+  .member-status.locked{ color:var(--red-deep); }
+  .member-status.unlocked{ color:var(--green); }
+
+  .admin-card{ border:1.5px dashed var(--red-line); border-radius:16px; padding:16px; margin-top:10px; background:#fffdfd; }
+
+  /* account / auth */
+  .auth-card{ border-radius:20px; padding:20px; border:1.5px solid var(--red-line); background:#fff; margin-bottom:16px; }
+  .auth-tabs{ display:flex; gap:8px; margin-bottom:14px; }
+  .auth-tab{ flex:1; text-align:center; padding:8px; border-radius:10px; border:1.5px solid var(--red-line); background:#fff; font-size:12px; font-weight:600; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft); }
+  .auth-tab.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  .google-btn{ display:flex; align-items:center; justify-content:center; gap:10px; width:100%; padding:12px; border-radius:12px; border:1.5px solid var(--red-line); background:#fff; font-weight:600; font-size:13.5px; color:var(--ink); }
+  .auth-divider{ display:flex; align-items:center; gap:10px; margin:14px 0; color:var(--ink-soft); font-size:11px; font-family:'IBM Plex Mono',monospace; }
+  .auth-divider::before, .auth-divider::after{ content:""; flex:1; height:1px; background:var(--red-line); }
+  .auth-field{ margin-bottom:10px; }
+  .auth-field input{ width:100%; border:1.5px solid var(--red-line); border-radius:10px; padding:11px 12px; font-size:16px; font-family:'Inter',sans-serif; }
+  .auth-link{ font-size:12px; color:var(--red-deep); font-weight:600; text-align:right; display:block; margin:-4px 0 12px; }
+  .account-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--surface); border:1px solid var(--red-line); border-radius:14px; padding:12px 14px; }
+  .account-row .who{ font-family:'IBM Plex Mono',monospace; font-size:12.5px; }
+  .role-badge{ font-size:9.5px; font-weight:700; padding:2px 7px; border-radius:6px; background:var(--amber-soft); color:var(--amber); margin-left:6px; }
+</style>
+</head>
+<body>
+
+<div class="ticker-wrap"><div class="ticker-track" id="tickerTrack">Loading live prices…</div></div>
+
+<header>
+  <div class="eyebrow"><span id="dataStatusText">DATA_STATUS: CONNECTING</span></div>
+  <h1>XNX Trading Analysis</h1>
+  <p class="sub">Multi-timeframe decision engine on live Binance market data. Analysis only — you decide, you execute. NO_TRADE is a valid result.</p>
+</header>
+
+<main>
+
+  <!-- Account / Login -->
+  <div class="engine-title" style="margin-top:0;">Account</div>
+  <div class="auth-card" id="authCard">
+
+    <div id="loggedOutView">
+      <button class="google-btn" id="googleSignInBtn" type="button">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6 29.6 4 24 4c-7.7 0-14.3 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.8 14.3-5l-6.6-5.6C29.6 35.1 26.9 36 24 36c-5.3 0-9.7-3.1-11.3-7.5l-6.6 5.1C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1 2.7-2.9 4.9-5.3 6.4l6.6 5.6C40.6 36.6 44 30.9 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
+        Continue with Google
+      </button>
+
+      <div class="auth-divider">OR</div>
+
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tabSignIn">Sign In</div>
+        <div class="auth-tab" id="tabSignUp">Create Account</div>
+      </div>
+      <div class="auth-field"><input type="email" id="authEmail" placeholder="Email" /></div>
+      <div class="auth-field"><input type="password" id="authPass" placeholder="Password" /></div>
+      <a class="auth-link" id="forgotPassBtn" href="#">Forgot password?</a>
+      <button class="btn" id="authSubmitBtn" type="button">Sign In</button>
+    </div>
+
+    <div id="loggedInView" style="display:none;">
+      <div class="account-row">
+        <div class="who">Signed in as <b id="authUserEmail"></b><span class="role-badge" id="authRoleBadge" style="display:none;">ADMIN</span></div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn ghost" id="goToAdminBtn" type="button" style="display:none; margin:0; width:auto;">Admin Panel ↓</button>
+          <button class="btn ghost" id="signOutBtn" type="button" style="margin:0; width:auto;">Sign out</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Membership Plans -->
+  <div class="engine-title">Membership Plans</div>
+  <div class="member-card">
+    <div style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">Analysis dashboard is free to try. <b>Paper Trading, Overnight Monitor &amp; Price Alerts</b> unlock once your account has an active membership.</div>
+    <div class="plan-card" id="trialCard" style="text-align:center; margin-top:14px;">
+      <div class="pname">FREE TRIAL — NO PAYMENT</div>
+      <div class="pprice">5 Days — Rs 0</div>
+      <div class="pper">Sign in above, then start your trial</div>
+      <button class="btn" id="trialBtn" type="button" style="margin-top:10px;">Start Free Trial</button>
+    </div>
+    <div class="plan-grid" id="planGrid"></div>
+
+    <div class="pay-box">
+      <div class="pay-title">PAYMENT DETAILS — pay manually, then message screenshot to get access</div>
+      <div class="pay-row"><div><div class="pk">WHATSAPP</div><div class="pv">0313 4586476</div></div><button class="copy-btn" data-copy="03134586476" type="button">Copy</button></div>
+      <div class="pay-row"><div><div class="pk">JAZZCASH / EASYPAISA — Qasim Raza</div><div class="pv">0324 4996576</div></div><button class="copy-btn" data-copy="03244996576" type="button">Copy</button></div>
+      <div class="pay-row"><div><div class="pk">MEEZAN BANK — Qasim Trader</div><div class="pv">1157 0114385195</div></div><button class="copy-btn" data-copy="11570114385195" type="button">Copy</button></div>
+      <a class="btn" id="waPayBtn" href="#" target="_blank" rel="noopener" style="text-decoration:none; text-align:center; display:block;">Message on WhatsApp to Pay</a>
+    </div>
+
+    <div class="member-status locked" id="memberStatus">STATUS: sign in to check your membership</div>
+  </div>
+
+  <div class="engine-title" id="adminTitle" style="display:none;">Admin — Grant Access</div>
+  <div class="admin-card" id="adminPanel" style="display:none;">
+    <div style="font-size:11.5px; color:var(--ink-soft); line-height:1.6; margin-bottom:10px; background:var(--amber-soft); border:1px solid #f0d9a8; border-radius:12px; padding:10px 12px;">
+      Note: "Grant Access" only works when you're signed in above with the reserved admin account (<b>qasimraza7881@gmail.com</b>). Firestore rules protect this — even if this panel is visible, granting will fail with "permission-denied" for any other account.
+    </div>
+    <div class="panel-grid">
+      <div class="field"><label>PLAN</label>
+        <select id="adminPlanSelect">
+          <option value="1">1 Month</option>
+          <option value="3">3 Months</option>
+          <option value="6">6 Months</option>
+          <option value="12">12 Months</option>
+        </select>
+      </div>
+      <div class="field"><label>CUSTOMER EMAIL (the one they'll log in with)</label><input id="adminCustEmail" placeholder="customer@email.com" /></div>
+    </div>
+    <div class="field" style="margin-top:8px;"><label>CUSTOMER WHATSAPP (optional, to notify them)</label><input id="adminCustPhone" placeholder="923xxxxxxxxx" /></div>
+    <button class="btn" id="adminGenBtn" type="button">Grant Access</button>
+    <div class="out-box" id="adminCodeOut" style="margin-top:12px; display:none;"></div>
+    <a class="btn secondary" id="adminSendBtn" href="#" target="_blank" rel="noopener" style="display:none; text-decoration:none; text-align:center;">Notify Customer on WhatsApp</a>
+    <div style="font-size:11px; color:var(--ink-soft); margin-top:10px; line-height:1.6;">This writes real access directly to your Firestore database, tied to the customer's email — it works the moment they sign in with that email, on any device, and you (as admin) can revoke it any time from the Firebase Console.</div>
+  </div>
+
+  <div class="mode-row">
+    <button class="mode-btn active" id="modeAnalysis" data-mode="ANALYSIS_ONLY">ANALYSIS ONLY</button>
+    <button class="mode-btn" id="modePaper" data-mode="PAPER_TRADING">PAPER TRADING</button>
+  </div>
+
+  <div class="provider-tabs">
+    <div class="ptab active" id="tabCrypto">Crypto · Binance (live)</div>
+    <div class="ptab disabled" id="tabForex" title="Needs a licensed forex data provider + API key. Not connected — no fake prices will be shown.">Forex/Metals · not connected</div>
+  </div>
+
+  <div class="selector-row">
+    <div class="search-wrap">
+      <input id="coinSearch" list="coinDatalist" autocomplete="off" autocapitalize="characters" placeholder="Search any coin — BTC, ETH, SOL..." />
+      <datalist id="coinDatalist"></datalist>
+      <div class="coin-dropdown" id="coinDropdown"></div>
+    </div>
+    <div class="status-pill" id="statusPill"><span class="dot"></span><span id="statusText">connecting</span></div>
+  </div>
+
+  <div class="coin-list" id="quickCoins"></div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="pair-name" id="pairName">BTCUSDT</div>
+        <div class="tf-badge" id="tfBadge">entry timeframe · live</div>
+      </div>
+      <div class="live-badge" id="liveBadge">LIVE</div>
+    </div>
+    <div class="tf-row" id="tfRow"></div>
+    <canvas id="chart" width="600" height="220"></canvas>
+    <div class="price-row">
+      <div>Price <b id="priceNow">--</b></div>
+      <div id="priceChange">--</div>
+    </div>
+    <div class="mtf-row" id="mtfRow"></div>
+  </div>
+
+  <div class="engine-title">Decision Engine</div>
+  <div class="signal-card none" id="signalCard">
+    <div class="signal-label">Current Signal</div>
+    <div class="signal-value none" id="signalValue">ANALYZING…</div>
+    <div class="conf-label">Analysis score (not a win probability)</div>
+    <div class="conf-bar"><div class="conf-fill none" id="confFill" style="width:0%"></div></div>
+    <div class="conf-score" id="confScore">0 / 100</div>
+    <div class="score-breakdown" id="scoreBreakdown"></div>
+
+    <div class="levels">
+      <div class="level-box entry"><div class="k">ENTRY ZONE</div><div class="v" id="entryVal">--</div></div>
+      <div class="level-box sl"><div class="k">STOP LOSS</div><div class="v" id="slVal">--</div></div>
+      <div class="level-box tp"><div class="k">TP1</div><div class="v" id="tp1Val">--</div></div>
+      <div class="level-box tp"><div class="k">TP2</div><div class="v" id="tp2Val">--</div></div>
+      <div class="level-box tp"><div class="k">TP3</div><div class="v" id="tp3Val">--</div></div>
+      <div class="level-box"><div class="k">RISK / REWARD</div><div class="v" id="rrVal">--</div></div>
+    </div>
+
+    <div class="reason"><b>Reason:</b> <span id="reasonText">Waiting for data…</span></div>
+    <div class="invalid" id="invalidBox" style="display:none;"><b>Invalidation:</b> <span id="invalidText"></span></div>
+
+    <button class="btn" id="openPaperBtn" style="display:none;">Open Paper Trade at Market</button>
+  </div>
+
+  <div class="disclaimer">Real Binance market data. No fabricated prices. NO_TRADE is a valid, expected result. This is analysis, not financial advice — no profit is guaranteed.</div>
+
+  <!-- Position sizing -->
+  <div class="engine-title">Position Size Calculator</div>
+  <div class="card">
+    <div class="panel-grid">
+      <div class="field"><label>ACCOUNT BALANCE ($)</label><input type="number" id="pbBalance" value="1000" /></div>
+      <div class="field"><label>RISK % PER TRADE</label><input type="number" id="pbRisk" value="1" step="0.1" /></div>
+      <div class="field"><label>ENTRY PRICE</label><input type="number" id="pbEntry" /></div>
+      <div class="field"><label>STOP LOSS</label><input type="number" id="pbSL" /></div>
+      <div class="field"><label>LEVERAGE (x)</label><input type="number" id="pbLev" value="1" /></div>
+      <div class="field"><label>&nbsp;</label><button class="btn secondary" id="pbFill" type="button">Use current signal</button></div>
+    </div>
+    <div class="out-grid">
+      <div class="out-box"><div class="k">MAX LOSS</div><div class="v" id="pbMaxLoss">--</div></div>
+      <div class="out-box"><div class="k">POSITION SIZE</div><div class="v" id="pbSize">--</div></div>
+      <div class="out-box"><div class="k">POSITION NOTIONAL</div><div class="v" id="pbNotional">--</div></div>
+      <div class="out-box"><div class="k">EST. MARGIN</div><div class="v" id="pbMargin">--</div></div>
+    </div>
+  </div>
+
+  <!-- Risk management -->
+  <div class="engine-title">Risk Management</div>
+  <div class="card">
+    <div class="panel-grid">
+      <div class="field"><label>MAX RISK / TRADE %</label><input type="number" id="rmRiskTrade" value="1" step="0.1" /></div>
+      <div class="field"><label>MAX DAILY LOSS %</label><input type="number" id="rmDailyLoss" value="3" step="0.1" /></div>
+      <div class="field"><label>MAX OPEN POSITIONS</label><input type="number" id="rmMaxOpen" value="3" /></div>
+      <div class="field"><label>COOLDOWN AFTER LOSS (min)</label><input type="number" id="rmCooldown" value="15" /></div>
+    </div>
+    <div style="margin-top:12px; font-size:12px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;">Today's simulated risk used</div>
+    <div class="risk-bar"><div class="risk-fill" id="riskUsedBar" style="width:0%"></div></div>
+    <div style="font-size:12px; font-family:'IBM Plex Mono',monospace;" id="riskUsedText">0% of 3% daily limit</div>
+    <div class="lock-banner" id="lockBanner" style="display:none;">TRADING_LOCKED — daily loss limit reached. Paper trades are blocked until reset.</div>
+    <button class="btn ghost" id="resetDayBtn" type="button">Reset today's risk (new day)</button>
+  </div>
+
+  <!-- Paper trading -->
+  <div class="engine-title">Paper Trading Account</div>
+  <div class="card">
+    <div class="out-grid">
+      <div class="out-box"><div class="k">BALANCE</div><div class="v" id="paBalance">$1,000.00</div></div>
+      <div class="out-box"><div class="k">EQUITY</div><div class="v" id="paEquity">$1,000.00</div></div>
+      <div class="out-box"><div class="k">OPEN P/L</div><div class="v" id="paOpenPL">$0.00</div></div>
+      <div class="out-box"><div class="k">WIN RATE</div><div class="v" id="paWinRate">--</div></div>
+    </div>
+    <div style="font-size:12px; color:var(--ink-soft); margin-top:14px; font-family:'IBM Plex Mono',monospace;">OPEN POSITIONS</div>
+    <table class="mini" id="openPosTable"><thead><tr><th>Symbol</th><th>Side</th><th>Entry</th><th>SL/TP1</th><th>P/L</th><th></th></tr></thead><tbody></tbody></table>
+    <div style="font-size:12px; color:var(--ink-soft); margin-top:14px; font-family:'IBM Plex Mono',monospace;">TRADE HISTORY</div>
+    <table class="mini" id="histPosTable"><thead><tr><th>Symbol</th><th>Side</th><th>Result</th><th>P/L</th></tr></thead><tbody></tbody></table>
+    <button class="btn ghost" id="resetAccountBtn" type="button">Reset paper account</button>
+  </div>
+
+  <!-- Watchlist -->
+  <div class="engine-title">Watchlist</div>
+  <div class="card">
+    <button class="btn secondary" id="addWatchBtn" type="button">+ Add current symbol</button>
+    <table class="mini" id="watchTable"><thead><tr><th>Symbol</th><th>Price</th><th>24h%</th><th></th></tr></thead><tbody></tbody></table>
+  </div>
+
+  <!-- Overnight Monitor -->
+  <div class="engine-title">Overnight Monitor</div>
+  <div class="card">
+    <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:12px; line-height:1.5;">
+      Scans every coin in your watchlist every few minutes through the night and remembers what it saw. When your chosen trading-start time arrives, it gives you a per-coin verdict: <b>TRADE</b> or <b>NO TRADE</b> — instead of you checking every coin manually at 9/10/11.
+      <br><b>Note:</b> this only works while this browser tab stays open (this is a client-side app, not a server) — leave it open overnight, or on a phone/laptop that stays on.
+    </div>
+    <div class="panel-grid">
+      <div class="field"><label>MY TRADING START TIME</label>
+        <select id="omTargetHour">
+          <option value="9">9:00 AM</option>
+          <option value="10">10:00 AM</option>
+          <option value="11">11:00 AM</option>
+        </select>
+      </div>
+      <div class="field"><label>&nbsp;</label><button class="btn" id="omToggleBtn" type="button">Start Overnight Monitoring</button></div>
+    </div>
+    <div style="font-size:12px; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft); margin-top:10px;" id="omStatus">Not running.</div>
+    <div style="font-size:12px; color:var(--ink-soft); margin-top:14px; font-family:'IBM Plex Mono',monospace;">LIVE OVERNIGHT READING (per watchlist coin)</div>
+    <table class="mini" id="omLiveTable"><thead><tr><th>Coin</th><th>Last signal</th><th>Score</th><th>Scans</th></tr></thead><tbody></tbody></table>
+
+    <div id="omVerdictWrap" style="display:none;">
+      <div style="font-size:12px; color:var(--amber); margin-top:16px; font-family:'IBM Plex Mono',monospace; font-weight:700;">MORNING VERDICT — <span id="omVerdictTime"></span></div>
+      <table class="mini" id="omVerdictTable"><thead><tr><th>Coin</th><th>Verdict</th><th>Score</th><th>Overnight consistency</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <!-- Alerts -->
+  <div class="engine-title">Price Alerts</div>
+  <div class="card">
+    <div class="panel-grid">
+      <div class="field"><label>CONDITION</label>
+        <select id="alCond"><option value="above">Price above</option><option value="below">Price below</option></select>
+      </div>
+      <div class="field"><label>PRICE</label><input type="number" id="alPrice" /></div>
+    </div>
+    <button class="btn secondary" id="addAlertBtn" type="button">Add alert for current symbol</button>
+    <table class="mini" id="alertTable"><thead><tr><th>Symbol</th><th>Condition</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+  </div>
+
+  <!-- Signal history -->
+  <div class="engine-title">Signal History</div>
+  <div class="card">
+    <table class="mini" id="historyTable"><thead><tr><th>Time</th><th>Symbol</th><th>Signal</th><th>Score</th></tr></thead><tbody></tbody></table>
+  </div>
+
+  <!-- Not available / production requirement transparency -->
+  <div class="engine-title">System Status</div>
+  <div class="card">
+    <div class="unavail-list">
+      <div><span class="badge">CONNECTED</span> Live crypto prices &amp; candles — Binance public REST API</div>
+      <div><span class="badge">CONNECTED</span> Analysis engine — runs entirely from real fetched candles</div>
+      <div><span class="badge">SIMULATED</span> Paper trading — real prices, simulated money, stored in this browser only</div>
+      <div><span class="badge">UNAVAILABLE</span> Forex/metals/index live data — needs a licensed provider + API key (not embedded here)</div>
+      <div><span class="badge">UNAVAILABLE</span> Real-money live order execution — needs a server-side broker integration; never build this to run with secrets in the browser</div>
+      <div><span class="badge">UNAVAILABLE</span> Economic news/calendar feed — needs a licensed data provider</div>
+      <div><span class="badge">CONNECTED</span> Login — Google Sign-In &amp; Email/Password with forgot-password, via Firebase Auth (once you fill in FIREBASE_CONFIG)</div>
+      <div><span class="badge">CONNECTED</span> Membership &amp; roles — real per-account data in Firestore, admin can grant/revoke from the Firebase Console</div>
+      <div><span class="badge">UNAVAILABLE</span> Backtesting, real-money order execution — need additional backend work beyond auth/database</div>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================
+   XNX TRADING ANALYSIS — CONFIG
+   ===================================================== */
+const REST = "https://api.binance.com";
+const ENTRY_TF = "15m";
+const CONTEXT_TFS = ["5m","1h","4h","1d"]; // + ENTRY_TF = full multi-timeframe stack
+const ALL_TF_ORDER = ["5m","15m","1h","4h","1d"];
+let allCoins = [];
+let currentSymbol = "BTCUSDT";
+let dataStatus = "CONNECTED"; // CONNECTED | DISCONNECTED
+let tradingLocked = false;
+let lastSignalCtx = null; // holds latest computed signal for paper trading / sizing
+let mtfCache = {}; // { tf: {trend, price, ts} }
+
+const QUICK = ["BTCUSDT","ETHUSDT","BNBUSDT","SOLUSDT","XRPUSDT","DOGEUSDT"];
+
+/* =====================================================
+   LOCAL STORAGE STATE (client-side persistence only —
+   this is a standalone deployed app, not a Claude artifact,
+   so browser storage is appropriate here)
+   ===================================================== */
+const LS = {
+  get(key, fallback){ try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; } },
+  set(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+};
+
+let watchlist = LS.get("xnx_watchlist", ["BTCUSDT","ETHUSDT"]);
+let alerts = LS.get("xnx_alerts", []);
+let signalHistory = LS.get("xnx_signal_history", []);
+let paperAccount = LS.get("xnx_paper_account", { balance:1000, startBalance:1000, open:[], closed:[] });
+let riskState = LS.get("xnx_risk_state", { day:new Date().toDateString(), lossUsedPct:0, tradesToday:0 });
+let currentMode = LS.get("xnx_mode", "ANALYSIS_ONLY");
+
+function saveAll(){
+  LS.set("xnx_watchlist", watchlist);
+  LS.set("xnx_alerts", alerts);
+  LS.set("xnx_signal_history", signalHistory);
+  LS.set("xnx_paper_account", paperAccount);
+  LS.set("xnx_risk_state", riskState);
+  LS.set("xnx_mode", currentMode);
+}
+
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("show"), 2600);
+}
+
+/* =====================================================
+   MEMBERSHIP PLANS & PAYMENT DETAILS
+   ===================================================== */
+const PLANS = [
+  { months:1,  price:30000,  label:"1 Month"   },
+  { months:3,  price:80000,  label:"3 Months"  },
+  { months:6,  price:150000, label:"6 Months"  },
+  { months:12, price:280000, label:"12 Months" },
+];
+const BASE_MONTHLY = 30000;
+const WA_NUMBER = "923134586476"; // 0313-4586476
+
+let selectedPlan = null; // set when the user taps a plan card
+
+function renderPlans(){
+  const grid = document.getElementById("planGrid");
+  grid.innerHTML = PLANS.map(p=>{
+    const monthly = Math.round(p.price / p.months);
+    const savings = (BASE_MONTHLY * p.months) - p.price;
+    const featured = p.months === 6;
+    const isSel = selectedPlan === p.months;
+    return `<div class="plan-card ${featured?'featured':''} ${isSel?'selected':''}" data-months="${p.months}" style="cursor:pointer;">
+      ${featured?'<div class="pbadge">BEST VALUE</div>':''}
+      <div class="pname">${p.label}${isSel?' ✓ SELECTED':''}</div>
+      <div class="pprice">Rs ${p.price.toLocaleString()}</div>
+      <div class="pper">≈ Rs ${monthly.toLocaleString()}/month</div>
+      ${p.months>1?`<div class="psave">Save Rs ${savings.toLocaleString()}</div>`:""}
+    </div>`;
+  }).join("");
+  grid.querySelectorAll(".plan-card").forEach(card=>{
+    card.onclick = ()=>{
+      selectedPlan = parseInt(card.dataset.months, 10);
+      renderPlans();
+      updateWaPayBtn();
+      document.querySelector(".pay-box")?.scrollIntoView({behavior:"smooth", block:"center"});
+      toast("Plan selected — tap 'Message on WhatsApp to Pay' below");
+    };
+  });
+}
+
+function updateWaPayBtn(){
+  const plan = PLANS.find(p=>p.months===selectedPlan);
+  const btn = document.getElementById("waPayBtn");
+  const msg = plan
+    ? `Hi, I want to buy XNX Trading Analysis membership.\nPlan: ${plan.label}\nPrice: Rs ${plan.price.toLocaleString()}\nMy account email: (type here)\nI will attach my payment screenshot.`
+    : "Hi, I want to buy XNX Trading Analysis membership. Please tell me the plan and confirm payment.";
+  btn.href = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(msg);
+  btn.textContent = plan ? `Message on WhatsApp to Pay — ${plan.label} (Rs ${plan.price.toLocaleString()})` : "Message on WhatsApp to Pay";
+}
+
+document.querySelectorAll(".copy-btn").forEach(btn=>{
+  btn.onclick = ()=>{
+    const val = btn.dataset.copy;
+    if(navigator.clipboard){ navigator.clipboard.writeText(val).catch(()=>{}); }
+    toast("Copied: " + val);
+  };
+});
+
+
+
+/* =====================================================
+   FIREBASE — real auth + real database
+   Fill in YOUR project's config below (Firebase Console →
+   Project settings → General → "Your apps" → SDK setup).
+   Until this is filled in, login/membership stays inactive
+   and a banner tells you so — nothing else on the page breaks.
+   ===================================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyClxlO1AeTJnj1vE9CNuqBIHLnf8HoqXNs",
+  authDomain: "crypto-trading-56474.firebaseapp.com",
+  projectId: "crypto-trading-56474",
+  storageBucket: "crypto-trading-56474.firebasestorage.app",
+  messagingSenderId: "268708983883",
+  appId: "1:268708983883:web:61c5a0d461bece836649ce"
+};
+const ADMIN_PASSWORD = "Qasim2026"; // change this — used only to reveal the admin panel UI in the browser
+const ADMIN_EMAIL = "qasimraza7881@gmail.com"; // this account is always admin & always has full free access
+const TRIAL_DAYS = 5;
+
+const firebaseReady = FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf("PASTE_") !== 0;
+let fbApp = null, fbAuth = null, fbDb = null;
+let currentUser = null;      // firebase auth user object
+let currentRole = "user";    // "user" | "admin", read from Firestore users/{uid}
+let currentLicense = null;   // { months, isTrial, expiry } from Firestore licenses/{email}, or null
+
+if(firebaseReady){
+  fbApp = firebase.initializeApp(FIREBASE_CONFIG);
+  fbAuth = firebase.auth();
+  fbDb = firebase.firestore();
+} else {
+  toast("Firebase not connected yet — see FIREBASE_CONFIG in the code");
+}
+
+function emailKey(email){ return (email || "").trim().toLowerCase(); }
+function isAdminAccount(){ return currentRole === "admin" || (currentUser && emailKey(currentUser.email) === ADMIN_EMAIL); }
+
+function isUnlocked(){
+  if(isAdminAccount()) return true; // admin account: everything free, no membership needed
+  return !!(currentLicense && currentLicense.expiry > Date.now());
+}
+function scrollToMembership(){
+  document.querySelector(".member-card")?.scrollIntoView({ behavior:"smooth", block:"start" });
+}
+function scrollToAccount(){
+  document.getElementById("authCard")?.scrollIntoView({ behavior:"smooth", block:"start" });
+}
+function scrollToAdmin(){
+  document.getElementById("adminPanel")?.scrollIntoView({ behavior:"smooth", block:"start" });
+}
+
+function renderMemberStatus(){
+  const el = document.getElementById("memberStatus");
+  if(!firebaseReady){ el.className="member-status locked"; el.textContent="STATUS: Firebase not connected yet"; return; }
+  if(!currentUser){ el.className="member-status locked"; el.textContent="STATUS: sign in to check your membership"; return; }
+  if(isAdminAccount()){
+    el.className = "member-status unlocked";
+    el.textContent = "STATUS: Admin account — full access, no membership needed";
+    return;
+  }
+  if(currentLicense && currentLicense.expiry > Date.now()){
+    const d = new Date(currentLicense.expiry);
+    const planLabel = currentLicense.isTrial ? "Free Trial" : `${currentLicense.months} month plan`;
+    el.className = "member-status unlocked";
+    el.textContent = `STATUS: unlocked — ${planLabel} — valid till ${d.toLocaleDateString()}`;
+  } else if(currentLicense){
+    el.className = "member-status locked";
+    el.textContent = "STATUS: membership expired — please renew";
+  } else {
+    el.className = "member-status locked";
+    el.textContent = "STATUS: no membership yet — buy a plan or start your free trial";
+  }
+}
+
+function renderTrialButton(){
+  const btn = document.getElementById("trialBtn");
+  if(isAdminAccount()){
+    btn.textContent = "Admin account — full access already";
+    btn.disabled = true;
+    btn.style.opacity = ".55";
+    return;
+  }
+  const used = currentUser && currentLicense; // any license record (incl. expired) counts as "used"
+  if(used){
+    btn.textContent = "Free trial already used on this account";
+    btn.disabled = true;
+    btn.style.opacity = ".55";
+  } else {
+    btn.textContent = "Start Free Trial";
+    btn.disabled = false;
+    btn.style.opacity = "1";
+  }
+}
+
+/* ---- watch the signed-in user's license doc live ---- */
+let licenseUnsub = null;
+function watchLicense(email){
+  if(licenseUnsub){ licenseUnsub(); licenseUnsub = null; }
+  if(!fbDb || !email) { currentLicense = null; renderMemberStatus(); renderTrialButton(); return; }
+  licenseUnsub = fbDb.collection("licenses").doc(emailKey(email)).onSnapshot(
+    doc => { currentLicense = doc.exists ? doc.data() : null; renderMemberStatus(); renderTrialButton(); },
+    ()  => { currentLicense = null; renderMemberStatus(); renderTrialButton(); }
+  );
+}
+
+/* ---- auth state ---- */
+function renderAuthUI(){
+  document.getElementById("loggedOutView").style.display = currentUser ? "none" : "block";
+  document.getElementById("loggedInView").style.display = currentUser ? "block" : "none";
+  if(currentUser){
+    document.getElementById("authUserEmail").textContent = currentUser.email;
+    const admin = isAdminAccount();
+    document.getElementById("authRoleBadge").style.display = admin ? "inline-block" : "none";
+    document.getElementById("goToAdminBtn").style.display = admin ? "inline-block" : "none";
+    document.getElementById("adminTitle").style.display = admin ? "block" : "none";
+    document.getElementById("adminPanel").style.display = admin ? "block" : "none";
+  }
+}
+document.getElementById("goToAdminBtn").onclick = scrollToAdmin;
+
+if(firebaseReady){
+  fbAuth.onAuthStateChanged(async (user)=>{
+    currentUser = user;
+    currentRole = "user";
+    if(user){
+      const userRef = fbDb.collection("users").doc(user.uid);
+      const snap = await userRef.get();
+      const shouldBeAdmin = emailKey(user.email) === ADMIN_EMAIL;
+      if(!snap.exists){
+        const role = shouldBeAdmin ? "admin" : "user";
+        await userRef.set({ email: emailKey(user.email), role, createdAt: Date.now() });
+        currentRole = role;
+      } else {
+        currentRole = snap.data().role || "user";
+        if(shouldBeAdmin && currentRole !== "admin"){
+          // self-heal: promote this reserved admin email if it was created before this rule existed
+          await userRef.set({ role: "admin" }, { merge: true }).catch(()=>{});
+          currentRole = "admin";
+        }
+      }
+      watchLicense(user.email);
+    } else {
+      watchLicense(null);
+    }
+    renderAuthUI();
+  });
+}
+
+/* ---- Google sign-in ---- */
+document.getElementById("googleSignInBtn").onclick = ()=>{
+  if(!firebaseReady){ toast("Firebase not connected yet — see FIREBASE_CONFIG in the code"); return; }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  fbAuth.signInWithPopup(provider).catch(e=> toast(e.message));
+};
+
+/* ---- email/password sign in + sign up ---- */
+let authMode = "signin";
+document.getElementById("tabSignIn").onclick = ()=>{
+  authMode = "signin";
+  document.getElementById("tabSignIn").classList.add("active");
+  document.getElementById("tabSignUp").classList.remove("active");
+  document.getElementById("authSubmitBtn").textContent = "Sign In";
+};
+document.getElementById("tabSignUp").onclick = ()=>{
+  authMode = "signup";
+  document.getElementById("tabSignUp").classList.add("active");
+  document.getElementById("tabSignIn").classList.remove("active");
+  document.getElementById("authSubmitBtn").textContent = "Create Account";
+};
+document.getElementById("authSubmitBtn").onclick = ()=>{
+  if(!firebaseReady){ toast("Firebase not connected yet — see FIREBASE_CONFIG in the code"); return; }
+  const email = document.getElementById("authEmail").value.trim();
+  const pass = document.getElementById("authPass").value;
+  if(!email || !pass){ toast("Enter email and password"); return; }
+  const action = authMode === "signup"
+    ? fbAuth.createUserWithEmailAndPassword(email, pass)
+    : fbAuth.signInWithEmailAndPassword(email, pass);
+  action.then(()=> toast(authMode==="signup" ? "Account created!" : "Signed in!"))
+        .catch(e => toast(e.message));
+};
+document.getElementById("forgotPassBtn").onclick = (e)=>{
+  e.preventDefault();
+  if(!firebaseReady){ toast("Firebase not connected yet — see FIREBASE_CONFIG in the code"); return; }
+  const email = document.getElementById("authEmail").value.trim();
+  if(!email){ toast("Type your email above first, then tap Forgot password"); return; }
+  fbAuth.sendPasswordResetEmail(email)
+    .then(()=> toast("Password reset email sent to " + email))
+    .catch(e => toast(e.message));
+};
+document.getElementById("signOutBtn").onclick = ()=>{ fbAuth.signOut(); };
+
+/* ---- free trial: user writes their own trial doc (rules restrict this to trial-only, once) ---- */
+document.getElementById("trialBtn").onclick = ()=>{
+  if(!firebaseReady){ toast("Firebase not connected yet — see FIREBASE_CONFIG in the code"); return; }
+  if(!currentUser){ toast("Sign in first to start your free trial"); scrollToAccount(); return; }
+  if(currentLicense){ toast("A membership record already exists on this account"); return; }
+  const expiry = Date.now() + TRIAL_DAYS*24*60*60*1000;
+  fbDb.collection("licenses").doc(emailKey(currentUser.email)).set({
+    months: "trial", isTrial: true, expiry, updatedAt: Date.now()
+  }).then(()=> toast(`${TRIAL_DAYS}-day free trial activated!`))
+    .catch(e => toast(e.message));
+};
+
+renderPlans();
+updateWaPayBtn();
+renderMemberStatus();
+renderTrialButton();
+
+/* ---- Admin panel: shows for role=="admin" accounts; #admin also reveals it by password (UI only) ---- */
+if(location.hash === "#admin"){
+  const pw = prompt("Admin password:");
+  if(pw === ADMIN_PASSWORD){
+    document.getElementById("adminTitle").style.display = "block";
+    document.getElementById("adminPanel").style.display = "block";
+  } else if(pw !== null){
+    toast("Wrong password");
+  }
+}
+document.getElementById("adminGenBtn").onclick = ()=>{
+  if(!firebaseReady){ toast("Firebase not connected yet — see FIREBASE_CONFIG in the code"); return; }
+  const months = parseInt(document.getElementById("adminPlanSelect").value, 10);
+  const email = emailKey(document.getElementById("adminCustEmail").value);
+  if(!email || email.indexOf("@")===-1){ toast("Enter the customer's email"); return; }
+  const expiry = Date.now() + months*30*24*60*60*1000;
+  fbDb.collection("licenses").doc(email).set({
+    months, isTrial:false, expiry, updatedAt: Date.now()
+  }).then(()=>{
+    const out = document.getElementById("adminCodeOut");
+    out.style.display = "block";
+    out.innerHTML = `<div class="k">GRANTED — ${months} MONTH</div><div class="v" style="font-size:15px;">${email}<br>valid till ${new Date(expiry).toLocaleDateString()}</div>`;
+    const phoneRaw = document.getElementById("adminCustPhone").value.trim().replace(/\D/g,"");
+    const sendBtn = document.getElementById("adminSendBtn");
+    if(phoneRaw){
+      sendBtn.style.display = "block";
+      sendBtn.href = "https://wa.me/" + phoneRaw + "?text=" +
+        encodeURIComponent(`Your XNX Trading Analysis membership (${months} month) is active. Sign in with ${email} to use it.`);
+    } else {
+      sendBtn.style.display = "none";
+    }
+    toast("Access granted to " + email);
+  }).catch(e => {
+    if(e.code === "permission-denied"){
+      toast("Blocked by Firestore rules — you are NOT signed in as the real admin account. Sign in above with qasimraza7881@gmail.com to grant access.");
+    } else {
+      toast(e.message);
+    }
+  });
+};
+
+/* =====================================================
+   MODE TOGGLE
+   ===================================================== */
+function setMode(mode){
+  if(mode === "PAPER_TRADING" && !isUnlocked()){
+    toast("Paper Trading needs an active membership — see plans above");
+    scrollToMembership();
+    mode = "ANALYSIS_ONLY";
+  }
+  currentMode = mode;
+  document.getElementById("modeAnalysis").classList.toggle("active", mode==="ANALYSIS_ONLY");
+  document.getElementById("modePaper").classList.toggle("active", mode==="PAPER_TRADING");
+  document.getElementById("openPaperBtn").style.display = mode==="PAPER_TRADING" ? "block" : "none";
+  saveAll();
+}
+document.getElementById("modeAnalysis").onclick = ()=>setMode("ANALYSIS_ONLY");
+document.getElementById("modePaper").onclick = ()=>setMode("PAPER_TRADING");
+setMode(currentMode);
+
+/* =====================================================
+   COIN LIST / TICKER TAPE
+   ===================================================== */
+async function loadCoinList(){
+  try{
+    const res = await fetch(REST + "/api/v3/ticker/24hr");
+    const data = await res.json();
+    allCoins = data
+      .filter(d => d.symbol.endsWith("USDT") && !/(UP|DOWN|BULL|BEAR)USDT$/.test(d.symbol))
+      .map(d => ({ symbol:d.symbol, price:parseFloat(d.lastPrice), change:parseFloat(d.priceChangePercent), vol:parseFloat(d.quoteVolume), bid:parseFloat(d.bidPrice), ask:parseFloat(d.askPrice) }))
+      .sort((a,b)=> b.vol - a.vol);
+
+    const dl = document.getElementById("coinDatalist");
+    dl.innerHTML = allCoins.slice(0,300).map(c => `<option value="${c.symbol}">`).join("");
+
+    renderTicker();
+    renderQuickCoins();
+    renderWatchTable();
+    checkAlerts();
+    setDataStatus(true);
+  }catch(e){
+    setDataStatus(false);
+  }
+}
+
+function renderTicker(){
+  const top = allCoins.slice(0,25);
+  const html = top.map(c => {
+    const cls = c.change >= 0 ? "up" : "down";
+    const arrow = c.change >= 0 ? "▲" : "▼";
+    return `<span>${c.symbol.replace("USDT","")} $${formatPrice(c.price)} <span class="${cls}">${arrow} ${Math.abs(c.change).toFixed(2)}%</span></span>`;
+  }).join("");
+  document.getElementById("tickerTrack").innerHTML = html + html;
+}
+
+function renderQuickCoins(){
+  const el = document.getElementById("quickCoins");
+  el.innerHTML = QUICK.map(s => `<div class="coin-chip ${s===currentSymbol?'active':''}" data-sym="${s}">${s.replace("USDT","")}</div>`).join("");
+  el.querySelectorAll(".coin-chip").forEach(chip => { chip.onclick = () => selectSymbol(chip.dataset.sym); });
+}
+
+function setDataStatus(ok){
+  dataStatus = ok ? "CONNECTED" : "DISCONNECTED";
+  const pill = document.getElementById("statusPill");
+  const txt = document.getElementById("statusText");
+  pill.className = "status-pill" + (ok ? "" : " bad");
+  txt.textContent = ok ? "live" : "disconnected";
+  document.getElementById("dataStatusText").textContent = "DATA_STATUS: " + dataStatus;
+}
+
+function formatPrice(p){
+  if(p===undefined || p===null || isNaN(p)) return "--";
+  if(p >= 1000) return p.toLocaleString(undefined,{maximumFractionDigits:2});
+  if(p >= 1) return p.toFixed(4);
+  return p.toFixed(6);
+}
+
+/* ---- live coin search dropdown (works on mobile/iOS, unlike relying on <datalist> alone) ---- */
+const coinSearchEl = document.getElementById("coinSearch");
+const coinDropdownEl = document.getElementById("coinDropdown");
+
+function renderCoinDropdown(list){
+  if(!list.length){
+    coinDropdownEl.innerHTML = `<div class="cd-empty">No matching coin — try BTC, ETH, SOL, DOGE...</div>`;
+    coinDropdownEl.classList.add("show");
+    return;
+  }
+  coinDropdownEl.innerHTML = list.map(c=>{
+    const cls = c.change >= 0 ? "up" : "down";
+    const arrow = c.change >= 0 ? "▲" : "▼";
+    return `<div class="coin-opt" data-sym="${c.symbol}">
+      <span class="sym">${c.symbol.replace("USDT","")}</span>
+      <span class="px">$${formatPrice(c.price)}</span>
+      <span class="chg ${cls}">${arrow} ${Math.abs(c.change).toFixed(2)}%</span>
+    </div>`;
+  }).join("");
+  coinDropdownEl.classList.add("show");
+  coinDropdownEl.querySelectorAll(".coin-opt").forEach(opt=>{
+    opt.addEventListener("click", ()=>{
+      const sym = opt.dataset.sym;
+      coinSearchEl.value = sym;
+      coinDropdownEl.classList.remove("show");
+      selectSymbol(sym);
+    });
+  });
+}
+
+function searchCoins(query){
+  const q = query.toUpperCase().trim();
+  if(!q) return allCoins.slice(0,15); // no query yet -> show top coins by volume, so people can see what's available
+  return allCoins.filter(c=>{
+    const base = c.symbol.replace("USDT","");
+    return c.symbol.startsWith(q) || base.startsWith(q) || base.includes(q);
+  }).slice(0,20);
+}
+
+coinSearchEl.addEventListener("focus", ()=> renderCoinDropdown(searchCoins(coinSearchEl.value)));
+coinSearchEl.addEventListener("input", ()=> renderCoinDropdown(searchCoins(coinSearchEl.value)));
+coinSearchEl.addEventListener("change", (e)=>{
+  const val = e.target.value.toUpperCase().trim();
+  const match = allCoins.find(c => c.symbol === val) || allCoins.find(c => c.symbol === val + "USDT");
+  if(match){ coinDropdownEl.classList.remove("show"); selectSymbol(match.symbol); }
+});
+coinSearchEl.addEventListener("keydown", (e)=>{
+  if(e.key === "Enter"){
+    const val = coinSearchEl.value.toUpperCase().trim();
+    const exact = allCoins.find(c => c.symbol === val) || allCoins.find(c => c.symbol === val + "USDT");
+    const first = exact || searchCoins(coinSearchEl.value)[0];
+    if(first){ coinSearchEl.value = first.symbol; coinDropdownEl.classList.remove("show"); selectSymbol(first.symbol); coinSearchEl.blur(); }
+  }
+});
+document.addEventListener("click", (e)=>{
+  if(!e.target.closest(".search-wrap")) coinDropdownEl.classList.remove("show");
+});
+
+function selectSymbol(sym){
+  currentSymbol = sym;
+  document.getElementById("pairName").textContent = sym;
+  renderQuickCoins();
+  mtfCache = {};
+  runAnalysis();
+  document.getElementById("chart").scrollIntoView({behavior:"smooth", block:"center"});
+}
+window.selectSymbol = selectSymbol;
+
+/* =====================================================
+   INDICATOR LIBRARY (section 5)
+   ===================================================== */
+function ema(values, period){
+  const k = 2/(period+1);
+  let arr = [values[0]];
+  for(let i=1;i<values.length;i++) arr.push(values[i]*k + arr[i-1]*(1-k));
+  return arr;
+}
+function sma(values, period){
+  const out = [];
+  for(let i=0;i<values.length;i++){
+    if(i<period-1){ out.push(null); continue; }
+    let s=0; for(let j=i-period+1;j<=i;j++) s+=values[j];
+    out.push(s/period);
+  }
+  return out;
+}
+function stddev(values, period){
+  const out=[];
+  for(let i=0;i<values.length;i++){
+    if(i<period-1){ out.push(null); continue; }
+    const slice = values.slice(i-period+1,i+1);
+    const m = slice.reduce((a,b)=>a+b,0)/period;
+    const v = slice.reduce((a,b)=>a+(b-m)*(b-m),0)/period;
+    out.push(Math.sqrt(v));
+  }
+  return out;
+}
+function rsi(values, period){
+  let gains=0, losses=0;
+  for(let i=1;i<=period;i++){ const d=values[i]-values[i-1]; if(d>=0) gains+=d; else losses-=d; }
+  let avgGain=gains/period, avgLoss=losses/period;
+  let arr=[100-100/(1+(avgLoss===0?100:avgGain/avgLoss))];
+  for(let i=period+1;i<values.length;i++){
+    const d=values[i]-values[i-1];
+    const g=d>0?d:0, l=d<0?-d:0;
+    avgGain=(avgGain*(period-1)+g)/period; avgLoss=(avgLoss*(period-1)+l)/period;
+    const rs = avgLoss===0?100:avgGain/avgLoss;
+    arr.push(100-100/(1+rs));
+  }
+  while(arr.length<values.length) arr.unshift(arr[0]);
+  return arr;
+}
+function macd(values){
+  const e12 = ema(values,12), e26 = ema(values,26);
+  const line = values.map((_,i)=> e12[i]-e26[i]);
+  const signal = ema(line,9);
+  const hist = line.map((v,i)=> v-signal[i]);
+  return { line, signal, hist };
+}
+function atr(highs, lows, closes, period){
+  const trs=[Math.abs(highs[0]-lows[0])];
+  for(let i=1;i<highs.length;i++){
+    trs.push(Math.max(highs[i]-lows[i], Math.abs(highs[i]-closes[i-1]), Math.abs(lows[i]-closes[i-1])));
+  }
+  const out=[trs[0]];
+  for(let i=1;i<trs.length;i++){
+    out.push(i<period ? (out[i-1]*i+trs[i])/(i+1) : (out[i-1]*(period-1)+trs[i])/period);
+  }
+  return out;
+}
+function bollinger(values, period=20, mult=2){
+  const mid = sma(values, period), sd = stddev(values, period);
+  const upper = mid.map((m,i)=> m===null?null:m+mult*sd[i]);
+  const lower = mid.map((m,i)=> m===null?null:m-mult*sd[i]);
+  return { mid, upper, lower };
+}
+function adx(highs, lows, closes, period=14){
+  const len = highs.length;
+  const plusDM=[0], minusDM=[0], tr=[0];
+  for(let i=1;i<len;i++){
+    const upMove = highs[i]-highs[i-1], downMove = lows[i-1]-lows[i];
+    plusDM.push(upMove>downMove && upMove>0 ? upMove : 0);
+    minusDM.push(downMove>upMove && downMove>0 ? downMove : 0);
+    tr.push(Math.max(highs[i]-lows[i], Math.abs(highs[i]-closes[i-1]), Math.abs(lows[i]-closes[i-1])));
+  }
+  const smoothTR = wilderSmooth(tr, period), smoothPlus = wilderSmooth(plusDM, period), smoothMinus = wilderSmooth(minusDM, period);
+  const diPlus = smoothPlus.map((v,i)=> smoothTR[i] ? 100*v/smoothTR[i] : 0);
+  const diMinus = smoothMinus.map((v,i)=> smoothTR[i] ? 100*v/smoothTR[i] : 0);
+  const dx = diPlus.map((v,i)=> (v+diMinus[i]) ? 100*Math.abs(v-diMinus[i])/(v+diMinus[i]) : 0);
+  return { adx: wilderSmooth(dx, period), diPlus, diMinus };
+}
+function wilderSmooth(values, period){
+  const out=[values[0]];
+  for(let i=1;i<values.length;i++) out.push(i<period ? (out[i-1]*i+values[i])/(i+1) : out[i-1]-out[i-1]/period+values[i]);
+  return out;
+}
+
+/* =====================================================
+   MULTI-TIMEFRAME CONTEXT (section 6)
+   ===================================================== */
+async function fetchKlines(symbol, tf, limit){
+  const res = await fetch(`${REST}/api/v3/klines?symbol=${symbol}&interval=${tf}&limit=${limit}`);
+  const k = await res.json();
+  if(!Array.isArray(k) || k.length < 30) throw new Error("insufficient data for " + tf);
+  return {
+    opens: k.map(x=>parseFloat(x[1])),
+    highs: k.map(x=>parseFloat(x[2])),
+    lows: k.map(x=>parseFloat(x[3])),
+    closes: k.map(x=>parseFloat(x[4])),
+    volumes: k.map(x=>parseFloat(x[5])),
+    closeTime: k[k.length-1][6]
+  };
+}
+
+function trendOf(closes){
+  const e20 = ema(closes,20), e50 = ema(closes,Math.min(50, closes.length-1));
+  const price = closes[closes.length-1];
+  const last20 = e20[e20.length-1], last50 = e50[e50.length-1];
+  if(price > last20 && last20 > last50) return "up";
+  if(price < last20 && last20 < last50) return "down";
+  return "flat";
+}
+
+async function loadContextTimeframes(symbol){
+  // returns a fresh context object for `symbol` — does NOT touch the global
+  // mtfCache, so it can be reused for background/overnight scans of other
+  // symbols without disturbing the chart that's currently on screen.
+  const results = {};
+  for(const tf of CONTEXT_TFS){
+    try{
+      const limit = tf==="1d" ? 120 : tf==="4h" ? 150 : tf==="1h" ? 150 : 120;
+      const d = await fetchKlines(symbol, tf, limit);
+      results[tf] = { trend: trendOf(d.closes), price: d.closes[d.closes.length-1] };
+    }catch(e){ results[tf] = { trend: "flat", price: null }; }
+  }
+  return results;
+}
+
+function renderTfRow(){
+  const el = document.getElementById("tfRow");
+  el.innerHTML = ALL_TF_ORDER.map(tf => `<div class="tf-chip ${tf===ENTRY_TF?'active':''}">${tf.toUpperCase()}</div>`).join("");
+}
+function renderMtfRow(entryTrend){
+  const el = document.getElementById("mtfRow");
+  const combined = Object.assign({}, mtfCache, { [ENTRY_TF]: { trend: entryTrend } });
+  el.innerHTML = ALL_TF_ORDER.map(tf=>{
+    const t = combined[tf] ? combined[tf].trend : "flat";
+    const cls = t==="up"?"up":t==="down"?"down":"flat";
+    const label = t==="up"?"BULL":t==="down"?"BEAR":"NEUTRAL";
+    return `<div class="mtf-pill ${cls}"><span class="lbl">${tf.toUpperCase()}</span>${label}</div>`;
+  }).join("");
+}
+
+/* =====================================================
+   MARKET STRUCTURE / S&R (sections 7-8)
+   ===================================================== */
+function marketStructure(closes, highs, lows){
+  const lookback = 40, exclude = 3;
+  const hb = highs.slice(-lookback, -exclude), lb = lows.slice(-lookback, -exclude);
+  const swingHigh = Math.max(...hb), swingLow = Math.min(...lb);
+
+  // simple HH/HL vs LH/LL over two halves of the lookback window
+  const half = Math.floor(hb.length/2);
+  const firstHalfHigh = Math.max(...hb.slice(0,half)), secondHalfHigh = Math.max(...hb.slice(half));
+  const firstHalfLow = Math.min(...lb.slice(0,half)), secondHalfLow = Math.min(...lb.slice(half));
+  const structureUp = secondHalfHigh >= firstHalfHigh && secondHalfLow >= firstHalfLow;
+  const structureDown = secondHalfHigh <= firstHalfHigh && secondHalfLow <= firstHalfLow;
+
+  const lastClose = closes[closes.length-1];
+  const priorClose = closes[closes.length-2];
+  const breakout = lastClose > swingHigh && priorClose <= swingHigh;
+  const breakdown = lastClose < swingLow && priorClose >= swingLow;
+
+  return { swingHigh, swingLow, structureUp, structureDown, breakout, breakdown };
+}
+
+/* =====================================================
+   SIGNAL / SCORING ENGINE (sections 9-14)
+   ===================================================== */
+function computeSignal(ctx, mtf){
+  mtf = mtf || mtfCache;
+  const { closes, highs, lows, volumes, price, bid, ask } = ctx;
+  const e20 = ema(closes,20), e50 = ema(closes,50), e200 = closes.length>200?ema(closes,200):null;
+  const rsiArr = rsi(closes,14), lastRsi = rsiArr[rsiArr.length-1];
+  const macdRes = macd(closes);
+  const atrArr = atr(highs, lows, closes, 14), lastAtr = atrArr[atrArr.length-1];
+  const bb = bollinger(closes,20,2);
+  const volMA = sma(volumes,20);
+  const lastVol = volumes[volumes.length-1], lastVolMA = volMA[volMA.length-1];
+  const ms = marketStructure(closes, highs, lows);
+
+  const entryTrend = trendOf(closes);
+  const spreadPct = (bid && ask) ? ((ask-bid)/((ask+bid)/2))*100 : 0;
+
+  let reasons = [], score = 0, breakdown = [];
+  const dir = entryTrend; // 'up' | 'down' | 'flat'
+
+  // --- Trend alignment (20) ---
+  let alignCount = 0, alignTotal = 0;
+  [...CONTEXT_TFS].forEach(tf=>{
+    if(mtf[tf] && mtf[tf].trend !== "flat"){
+      alignTotal++;
+      if(mtf[tf].trend === dir) alignCount++;
+    }
+  });
+  const alignScore = alignTotal>0 ? Math.round(20 * (alignCount/alignTotal)) : (dir!=="flat" ? 10 : 0);
+  score += alignScore; breakdown.push(["Trend align", alignScore, 20]);
+  if(alignTotal>0) reasons.push(`${alignCount}/${alignTotal} higher timeframes agree with ${dir==='up'?'bullish':dir==='down'?'bearish':'no'} bias`);
+
+  // strong disagreement check
+  const disagreeCount = CONTEXT_TFS.filter(tf => mtf[tf] && mtf[tf].trend !== "flat" && mtf[tf].trend !== dir).length;
+  const strongConflict = alignTotal>=2 && disagreeCount >= Math.ceil(alignTotal*0.6);
+
+  // --- Market structure (20) ---
+  let structScore = 0;
+  if(dir==="up" && (ms.structureUp || ms.breakout)){ structScore = ms.breakout ? 20 : 14; reasons.push(ms.breakout ? "confirmed breakout above swing resistance" : "higher-high / higher-low structure intact"); }
+  else if(dir==="down" && (ms.structureDown || ms.breakdown)){ structScore = ms.breakdown ? 20 : 14; reasons.push(ms.breakdown ? "confirmed breakdown below swing support" : "lower-high / lower-low structure intact"); }
+  score += structScore; breakdown.push(["Structure", structScore, 20]);
+
+  // --- Support/Resistance reaction (15) ---
+  let srScore = 0;
+  const nearSupport = (price - ms.swingLow) <= lastAtr*2;
+  const nearResistance = (ms.swingHigh - price) <= lastAtr*2;
+  if(dir==="up" && (nearSupport || ms.breakout)){ srScore = 15; reasons.push(nearSupport ? "price reacting from recent support zone" : "trading above former resistance (retest zone)"); }
+  if(dir==="down" && (nearResistance || ms.breakdown)){ srScore = 15; reasons.push(nearResistance ? "price rejecting from recent resistance zone" : "trading below former support (retest zone)"); }
+  score += srScore; breakdown.push(["S/R", srScore, 15]);
+
+  // --- Volume (15) ---
+  let volScore = 0;
+  if(lastVolMA && lastVol > lastVolMA*1.1){ volScore = 15; reasons.push("volume above 20-period average confirms participation"); }
+  else if(lastVolMA && lastVol > lastVolMA*0.85){ volScore = 8; }
+  score += volScore; breakdown.push(["Volume", volScore, 15]);
+
+  // --- Momentum (10) ---
+  let momScore = 0;
+  const macdBull = macdRes.line[macdRes.line.length-1] > macdRes.signal[macdRes.signal.length-1];
+  if(dir==="up" && lastRsi>50 && lastRsi<75 && macdBull){ momScore = 10; reasons.push(`RSI ${lastRsi.toFixed(0)} + MACD bullish crossover confirm momentum`); }
+  else if(dir==="down" && lastRsi<50 && lastRsi>25 && !macdBull){ momScore = 10; reasons.push(`RSI ${lastRsi.toFixed(0)} + MACD bearish crossover confirm momentum`); }
+  else if((dir==="up" && lastRsi>50) || (dir==="down" && lastRsi<50)){ momScore = 5; }
+  score += momScore; breakdown.push(["Momentum", momScore, 10]);
+
+  // --- Volatility / spread sanity (10) ---
+  let volaScore = 0;
+  const atrPct = (lastAtr/price)*100;
+  const spreadOk = spreadPct < 0.15; // crypto majors typically well under this
+  if(atrPct > 0.15 && atrPct < 6 && spreadOk){ volaScore = 10; }
+  else if(atrPct>0 && spreadOk){ volaScore = 5; }
+  score += volaScore; breakdown.push(["Volatility", volaScore, 10]);
+
+  // --- Levels: entry / SL / TP / R:R (10 pts awarded after we know R:R) ---
+  let entry = price, sl = 0, tp1=0, tp2=0, tp3=0, rr=0, invalidation="";
+  if(dir==="up"){
+    sl = Math.min(ms.swingLow - lastAtr*0.5, price - lastAtr*1.2);
+    const dist = price - sl;
+    tp1 = price + dist*1.5; tp2 = price + dist*2.5; tp3 = price + dist*4;
+    rr = dist>0 ? (tp1-price)/dist : 0;
+    invalidation = `Trade becomes invalid if price closes below ${formatPrice(sl)}.`;
+  } else if(dir==="down"){
+    sl = Math.max(ms.swingHigh + lastAtr*0.5, price + lastAtr*1.2);
+    const dist = sl - price;
+    tp1 = price - dist*1.5; tp2 = price - dist*2.5; tp3 = price - dist*4;
+    rr = dist>0 ? (price-tp1)/dist : 0;
+    invalidation = `Trade becomes invalid if price closes above ${formatPrice(sl)}.`;
+  }
+  let rrScore = 0;
+  if(rr >= 2) rrScore = 10; else if(rr >= 1.5) rrScore = 6; else if(rr>0) rrScore = 2;
+  score += rrScore; breakdown.push(["Risk/Reward", rrScore, 10]);
+  if(rr>0) reasons.push(`risk:reward on TP1 ≈ 1:${rr.toFixed(1)}`);
+
+  score = Math.min(100, Math.round(score));
+
+  // --- Final gating: NO_TRADE conditions (section 17) ---
+  let signal = "NO_TRADE";
+  let gateReasons = [];
+  if(dataStatus !== "CONNECTED"){ gateReasons.push("live data disconnected"); }
+  if(!spreadOk){ gateReasons.push("spread abnormal"); }
+  if(strongConflict){ gateReasons.push("timeframes strongly conflict"); }
+  if(rr < 1.5){ gateReasons.push("no 1:1.5+ risk/reward setup available"); }
+  if(dir==="flat"){ gateReasons.push("entry-timeframe trend unclear"); }
+
+  if(gateReasons.length===0 && dir!=="flat" && score>=70){
+    signal = dir==="up" ? "BUY" : "SELL";
+  } else if(gateReasons.length===0 && dir!=="flat" && score>=55){
+    signal = "WAIT_FOR_ENTRY";
+  } else {
+    signal = "NO_TRADE";
+    if(gateReasons.length) reasons.unshift("NO_TRADE: " + gateReasons.join(", "));
+    else reasons.unshift("Score below threshold — safest decision is NO_TRADE");
+  }
+
+  return { signal, score, breakdown, entry, sl, tp1, tp2, tp3, rr, reasons, invalidation, price, dir, spreadPct, atr:lastAtr };
+}
+
+/* =====================================================
+   MAIN ANALYSIS LOOP
+   ===================================================== */
+async function runAnalysis(){
+  renderTfRow();
+  document.getElementById("signalValue").textContent = "ANALYZING…";
+  document.getElementById("signalValue").className = "signal-value none";
+  try{
+    const [entryData, bookRes] = await Promise.all([
+      fetchKlines(currentSymbol, ENTRY_TF, 260),
+      fetch(`${REST}/api/v3/ticker/bookTicker?symbol=${currentSymbol}`)
+    ]);
+    const book = await bookRes.json();
+    const bid = parseFloat(book.bidPrice), ask = parseFloat(book.askPrice);
+    const price = entryData.closes[entryData.closes.length-1];
+
+    // staleness check
+    const ageMs = Date.now() - entryData.closeTime;
+    if(ageMs > 1000*60*45){ setDataStatus(false); }
+
+    if(Object.keys(mtfCache).length===0){ mtfCache = await loadContextTimeframes(currentSymbol); }
+
+    const result = computeSignal({ closes: entryData.closes, highs: entryData.highs, lows: entryData.lows, volumes: entryData.volumes, price, bid, ask }, mtfCache);
+    lastSignalCtx = Object.assign({ symbol: currentSymbol }, result);
+
+    renderChart(entryData, result.signal!=="NO_TRADE" ? result.entry : null, result.signal!=="NO_TRADE" ? result.sl : null);
+    renderSignal(result);
+    renderMtfRow(result.dir);
+    renderPrice(price, allCoins.find(c=>c.symbol===currentSymbol)?.change ?? 0);
+    logSignalHistory(result);
+    checkPaperPositions(price);
+    setDataStatus(true);
+  }catch(e){
+    setDataStatus(false);
+    document.getElementById("signalValue").textContent = "DATA_UNAVAILABLE";
+    document.getElementById("signalValue").className = "signal-value none";
+    document.getElementById("reasonText").textContent = "Live feed issue — retrying automatically.";
+  }
+}
+
+function renderPrice(price, change){
+  document.getElementById("priceNow").textContent = "$"+formatPrice(price);
+  const el = document.getElementById("priceChange");
+  el.textContent = (change>=0?"▲ ":"▼ ")+Math.abs(change).toFixed(2)+"% (24h)";
+  el.style.color = change>=0 ? "var(--green)" : "var(--red)";
+}
+
+function renderSignal(r){
+  const card = document.getElementById("signalCard");
+  const val = document.getElementById("signalValue");
+  const fill = document.getElementById("confFill");
+  const cls = r.signal==="BUY" ? "buy" : r.signal==="SELL" ? "sell" : r.signal==="WAIT_FOR_ENTRY" ? "none" : "none";
+
+  card.className = "signal-card " + (tradingLocked ? "locked" : cls);
+  val.className = "signal-value " + (tradingLocked ? "locked" : cls);
+  val.textContent = tradingLocked ? "RISK_LOCKED" : r.signal.replace(/_/g," ");
+  fill.className = "conf-fill " + cls;
+  fill.style.width = r.score+"%";
+  document.getElementById("confScore").textContent = r.score + " / 100" + (r.score>=90?" · Very strong": r.score>=80?" · Strong": r.score>=70?" · Setup":" · Below threshold");
+
+  document.getElementById("scoreBreakdown").innerHTML = r.breakdown.map(b=>`<span class="sb-chip">${b[0]} ${b[1]}/${b[2]}</span>`).join("");
+
+  const tradable = r.signal==="BUY" || r.signal==="SELL";
+  document.getElementById("entryVal").textContent = tradable ? formatPrice(r.entry) : "--";
+  document.getElementById("slVal").textContent = tradable ? formatPrice(r.sl) : "--";
+  document.getElementById("tp1Val").textContent = tradable ? formatPrice(r.tp1) : "--";
+  document.getElementById("tp2Val").textContent = tradable ? formatPrice(r.tp2) : "--";
+  document.getElementById("tp3Val").textContent = tradable ? formatPrice(r.tp3) : "--";
+  document.getElementById("rrVal").textContent = tradable ? ("1 : " + r.rr.toFixed(1)) : "--";
+  document.getElementById("reasonText").textContent = r.reasons.join(". ") + ".";
+
+  const invBox = document.getElementById("invalidBox");
+  if(tradable){ invBox.style.display="block"; document.getElementById("invalidText").textContent = r.invalidation; }
+  else invBox.style.display="none";
+
+  document.getElementById("openPaperBtn").disabled = !tradable || tradingLocked;
+  document.getElementById("openPaperBtn").style.opacity = (!tradable || tradingLocked) ? 0.5 : 1;
+
+  // keep sizing calculator entry/SL in sync if empty
+  const pbEntry = document.getElementById("pbEntry"), pbSL = document.getElementById("pbSL");
+  if(tradable && (!pbEntry.dataset.touched)){ pbEntry.value = r.entry.toFixed(6); pbSL.value = r.sl.toFixed(6); recalcSizing(); }
+}
+
+function renderChart(candles, entry, sl){
+  // candles = { opens, highs, lows, closes } — real OHLC candlestick chart, like Binance
+  const canvas = document.getElementById("chart");
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width = canvas.clientWidth * 2;
+  const h = canvas.height = 220 * 2;
+  ctx.clearRect(0,0,w,h);
+
+  const N = 70; // how many recent candles fit comfortably on a phone screen
+  const opens = candles.opens.slice(-N);
+  const highs = candles.highs.slice(-N);
+  const lows = candles.lows.slice(-N);
+  const closes = candles.closes.slice(-N);
+  const n = closes.length;
+
+  const min = Math.min(...lows, sl||Infinity, entry||Infinity);
+  const max = Math.max(...highs, sl||-Infinity, entry||-Infinity);
+  const pad = (max-min)*0.08 || max*0.01;
+  const lo = min-pad, hi = max+pad;
+
+  const left = 10, right = w-10, top = 16, bottom = h-24;
+  const slot = (right-left) / n;
+  const bodyW = Math.max(2, slot*0.62);
+  const cx = i => left + slot*i + slot/2;
+  const y = v => bottom - ((v-lo)/(hi-lo)) * (bottom-top);
+
+  // grid
+  ctx.strokeStyle = "#f0d3d5"; ctx.lineWidth = 1;
+  for(let i=0;i<5;i++){ const gy = top + i*(bottom-top)/4; ctx.beginPath(); ctx.moveTo(left,gy); ctx.lineTo(right,gy); ctx.stroke(); }
+
+  // candlesticks
+  for(let i=0;i<n;i++){
+    const o = opens[i], c = closes[i], hi_ = highs[i], lo_ = lows[i];
+    const up = c >= o;
+    const color = up ? "#0e8a3e" : "#c81324";
+    const x0 = cx(i);
+    // wick
+    ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, bodyW*0.14);
+    ctx.beginPath(); ctx.moveTo(x0, y(hi_)); ctx.lineTo(x0, y(lo_)); ctx.stroke();
+    // body
+    const yOpen = y(o), yClose = y(c);
+    const bodyTop = Math.min(yOpen, yClose);
+    const bodyH = Math.max(1.5, Math.abs(yOpen - yClose));
+    ctx.fillStyle = color;
+    ctx.fillRect(x0 - bodyW/2, bodyTop, bodyW, bodyH);
+  }
+
+  if(entry){
+    ctx.setLineDash([8,6]); ctx.strokeStyle="#c81324"; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(left,y(entry)); ctx.lineTo(right,y(entry)); ctx.stroke();
+  }
+  if(sl){
+    ctx.strokeStyle="#8f0d1a";
+    ctx.beginPath(); ctx.moveTo(left,y(sl)); ctx.lineTo(right,y(sl)); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+}
+
+/* =====================================================
+   POSITION SIZE CALCULATOR (section 15)
+   ===================================================== */
+["pbEntry","pbSL"].forEach(id=>{
+  document.getElementById(id).addEventListener("input", (e)=>{ e.target.dataset.touched = "1"; recalcSizing(); });
+});
+["pbBalance","pbRisk","pbLev"].forEach(id=> document.getElementById(id).addEventListener("input", recalcSizing));
+document.getElementById("pbFill").onclick = ()=>{
+  if(!lastSignalCtx || !(lastSignalCtx.signal==="BUY"||lastSignalCtx.signal==="SELL")){ toast("No active BUY/SELL setup right now"); return; }
+  document.getElementById("pbEntry").value = lastSignalCtx.entry.toFixed(6);
+  document.getElementById("pbEntry").dataset.touched = "1";
+  document.getElementById("pbSL").value = lastSignalCtx.sl.toFixed(6);
+  document.getElementById("pbSL").dataset.touched = "1";
+  recalcSizing();
+};
+function recalcSizing(){
+  const bal = parseFloat(document.getElementById("pbBalance").value)||0;
+  const riskPct = parseFloat(document.getElementById("pbRisk").value)||0;
+  const entry = parseFloat(document.getElementById("pbEntry").value)||0;
+  const sl = parseFloat(document.getElementById("pbSL").value)||0;
+  const lev = parseFloat(document.getElementById("pbLev").value)||1;
+  const maxLoss = bal * (riskPct/100);
+  const stopDist = Math.abs(entry-sl);
+  const size = stopDist>0 ? maxLoss/stopDist : 0;
+  const notional = size*entry;
+  const margin = lev>0 ? notional/lev : notional;
+  document.getElementById("pbMaxLoss").textContent = "$"+maxLoss.toFixed(2);
+  document.getElementById("pbSize").textContent = size ? size.toFixed(6) : "--";
+  document.getElementById("pbNotional").textContent = notional ? "$"+notional.toFixed(2) : "--";
+  document.getElementById("pbMargin").textContent = margin ? "$"+margin.toFixed(2) : "--";
+}
+recalcSizing();
+
+/* =====================================================
+   RISK MANAGEMENT (section 16)
+   ===================================================== */
+function checkDayRollover(){
+  const today = new Date().toDateString();
+  if(riskState.day !== today){ riskState = { day: today, lossUsedPct:0, tradesToday:0 }; saveAll(); }
+}
+function renderRisk(){
+  checkDayRollover();
+  const dailyLimit = parseFloat(document.getElementById("rmDailyLoss").value)||3;
+  const usedPct = Math.min(100, (riskState.lossUsedPct/dailyLimit)*100);
+  document.getElementById("riskUsedBar").style.width = usedPct+"%";
+  document.getElementById("riskUsedText").textContent = `${riskState.lossUsedPct.toFixed(2)}% of ${dailyLimit}% daily limit`;
+  tradingLocked = riskState.lossUsedPct >= dailyLimit;
+  document.getElementById("lockBanner").style.display = tradingLocked ? "block" : "none";
+}
+document.getElementById("resetDayBtn").onclick = ()=>{ riskState = { day:new Date().toDateString(), lossUsedPct:0, tradesToday:0 }; saveAll(); renderRisk(); toast("Daily risk counter reset"); };
+document.getElementById("rmDailyLoss").addEventListener("input", renderRisk);
+
+/* =====================================================
+   PAPER TRADING (section 22)
+   ===================================================== */
+function renderPaperAccount(){
+  const openPL = paperAccount.open.reduce((sum,p)=>{
+    const cur = allCoins.find(c=>c.symbol===p.symbol)?.price ?? p.entry;
+    const pl = p.side==="BUY" ? (cur-p.entry)*p.size : (p.entry-cur)*p.size;
+    return sum+pl;
+  },0);
+  const equity = paperAccount.balance + openPL;
+  document.getElementById("paBalance").textContent = "$"+paperAccount.balance.toFixed(2);
+  document.getElementById("paEquity").textContent = "$"+equity.toFixed(2);
+  document.getElementById("paOpenPL").textContent = (openPL>=0?"+$":"-$")+Math.abs(openPL).toFixed(2);
+  document.getElementById("paOpenPL").style.color = openPL>=0 ? "var(--green)" : "var(--red)";
+  const wins = paperAccount.closed.filter(t=>t.pl>0).length;
+  document.getElementById("paWinRate").textContent = paperAccount.closed.length ? Math.round(100*wins/paperAccount.closed.length)+"%" : "--";
+
+  const openBody = document.querySelector("#openPosTable tbody");
+  openBody.innerHTML = paperAccount.open.length ? paperAccount.open.map(p=>{
+    const cur = allCoins.find(c=>c.symbol===p.symbol)?.price ?? p.entry;
+    const pl = p.side==="BUY" ? (cur-p.entry)*p.size : (p.entry-cur)*p.size;
+    return `<tr><td>${p.symbol}</td><td><span class="tag ${p.side==='BUY'?'buy':'sell'}">${p.side}</span></td><td>${formatPrice(p.entry)}</td><td>${formatPrice(p.sl)} / ${formatPrice(p.tp1)}</td><td style="color:${pl>=0?'var(--green)':'var(--red)'}">${pl>=0?'+':''}${pl.toFixed(2)}</td><td><button class="btn ghost" style="margin:0;padding:5px 8px;" onclick="closePaperPosition('${p.id}','manual')">Close</button></td></tr>`;
+  }).join("") : `<tr><td colspan="6" class="empty-row">No open positions</td></tr>`;
+
+  const histBody = document.querySelector("#histPosTable tbody");
+  const recent = paperAccount.closed.slice(-10).reverse();
+  histBody.innerHTML = recent.length ? recent.map(t=>`<tr><td>${t.symbol}</td><td><span class="tag ${t.side==='BUY'?'buy':'sell'}">${t.side}</span></td><td>${t.result}</td><td style="color:${t.pl>=0?'var(--green)':'var(--red)'}">${t.pl>=0?'+':''}${t.pl.toFixed(2)}</td></tr>`).join("") : `<tr><td colspan="4" class="empty-row">No closed trades yet</td></tr>`;
+}
+
+document.getElementById("openPaperBtn").onclick = ()=>{
+  if(currentMode!=="PAPER_TRADING"){ toast("Switch to PAPER TRADING mode first"); return; }
+  checkDayRollover(); renderRisk();
+  if(tradingLocked){ toast("TRADING_LOCKED — daily loss limit reached"); return; }
+  const maxOpen = parseInt(document.getElementById("rmMaxOpen").value)||3;
+  if(paperAccount.open.length >= maxOpen){ toast("Max open positions reached"); return; }
+  if(!lastSignalCtx || !(lastSignalCtx.signal==="BUY"||lastSignalCtx.signal==="SELL")){ toast("No active BUY/SELL setup right now"); return; }
+
+  const r = lastSignalCtx;
+  const bal = parseFloat(document.getElementById("pbBalance").value)||paperAccount.balance;
+  const riskPct = parseFloat(document.getElementById("rmRiskTrade").value)||1;
+  const maxLoss = bal*(riskPct/100);
+  const stopDist = Math.abs(r.entry-r.sl);
+  const size = stopDist>0 ? maxLoss/stopDist : 0;
+  if(size<=0){ toast("Cannot size position — invalid stop distance"); return; }
+
+  paperAccount.open.push({ id: Date.now()+"_"+r.symbol, symbol:r.symbol, side:r.signal, entry:r.price, sl:r.sl, tp1:r.tp1, tp2:r.tp2, tp3:r.tp3, size, openedAt: Date.now() });
+  riskState.tradesToday++;
+  saveAll(); renderPaperAccount();
+  toast(`Paper ${r.signal} opened on ${r.symbol}`);
+};
+
+function closePaperPosition(id, reason){
+  const idx = paperAccount.open.findIndex(p=>p.id===id);
+  if(idx===-1) return;
+  const p = paperAccount.open[idx];
+  const cur = allCoins.find(c=>c.symbol===p.symbol)?.price ?? p.entry;
+  const pl = p.side==="BUY" ? (cur-p.entry)*p.size : (p.entry-cur)*p.size;
+  paperAccount.balance += pl;
+  paperAccount.closed.push({ symbol:p.symbol, side:p.side, pl, result:reason, closedAt: Date.now() });
+  paperAccount.open.splice(idx,1);
+
+  if(pl<0){
+    const dailyLimit = parseFloat(document.getElementById("rmDailyLoss").value)||3;
+    const lossPct = Math.abs(pl)/paperAccount.startBalance*100;
+    riskState.lossUsedPct += lossPct;
+  }
+  saveAll(); renderRisk(); renderPaperAccount();
+}
+window.closePaperPosition = closePaperPosition;
+
+function checkPaperPositions(latestPriceForCurrentSymbol){
+  paperAccount.open.slice().forEach(p=>{
+    const cur = p.symbol===currentSymbol ? latestPriceForCurrentSymbol : (allCoins.find(c=>c.symbol===p.symbol)?.price);
+    if(!cur) return;
+    if(p.side==="BUY"){
+      if(cur<=p.sl) closePaperPosition(p.id,"SL hit");
+      else if(cur>=p.tp1) closePaperPosition(p.id,"TP1 hit");
+    } else {
+      if(cur>=p.sl) closePaperPosition(p.id,"SL hit");
+      else if(cur<=p.tp1) closePaperPosition(p.id,"TP1 hit");
+    }
+  });
+}
+document.getElementById("resetAccountBtn").onclick = ()=>{
+  paperAccount = { balance:1000, startBalance:1000, open:[], closed:[] };
+  riskState = { day:new Date().toDateString(), lossUsedPct:0, tradesToday:0 };
+  saveAll(); renderPaperAccount(); renderRisk();
+  toast("Paper account reset to $1,000");
+};
+
+/* =====================================================
+   WATCHLIST (section 20)
+   ===================================================== */
+document.getElementById("addWatchBtn").onclick = ()=>{
+  if(!watchlist.includes(currentSymbol)){ watchlist.push(currentSymbol); saveAll(); renderWatchTable(); toast(currentSymbol+" added to watchlist"); }
+  else toast("Already in watchlist");
+};
+function renderWatchTable(){
+  const body = document.querySelector("#watchTable tbody");
+  if(!watchlist.length){ body.innerHTML = `<tr><td colspan="4" class="empty-row">Watchlist is empty</td></tr>`; return; }
+  body.innerHTML = watchlist.map(sym=>{
+    const c = allCoins.find(x=>x.symbol===sym);
+    const price = c?formatPrice(c.price):"--";
+    const change = c? (c.change>=0?"+":"")+c.change.toFixed(2)+"%" : "--";
+    const color = c && c.change>=0 ? "var(--green)" : "var(--red)";
+    return `<tr style="cursor:pointer;" onclick="selectSymbol('${sym}')"><td>${sym.replace("USDT","")}</td><td>$${price}</td><td style="color:${color}">${change}</td><td><button class="btn ghost" style="margin:0;padding:5px 8px;" onclick="event.stopPropagation();removeWatch('${sym}')">✕</button></td></tr>`;
+  }).join("");
+}
+function removeWatch(sym){ watchlist = watchlist.filter(s=>s!==sym); saveAll(); renderWatchTable(); }
+window.removeWatch = removeWatch;
+
+/* =====================================================
+   PRICE ALERTS (section 21)
+   ===================================================== */
+if("Notification" in window && Notification.permission==="default"){ /* ask lazily on first alert add */ }
+document.getElementById("addAlertBtn").onclick = ()=>{
+  if(!isUnlocked()){ toast("Price Alerts need an active membership — see plans above"); scrollToMembership(); return; }
+  const cond = document.getElementById("alCond").value;
+  const price = parseFloat(document.getElementById("alPrice").value);
+  if(!price){ toast("Enter a price for the alert"); return; }
+  if("Notification" in window && Notification.permission==="default") Notification.requestPermission();
+  alerts.push({ id:Date.now(), symbol: currentSymbol, cond, price, triggered:false });
+  saveAll(); renderAlertTable();
+  toast("Alert added for "+currentSymbol);
+};
+function renderAlertTable(){
+  const body = document.querySelector("#alertTable tbody");
+  if(!alerts.length){ body.innerHTML = `<tr><td colspan="4" class="empty-row">No alerts set</td></tr>`; return; }
+  body.innerHTML = alerts.map(a=>`<tr><td>${a.symbol.replace("USDT","")}</td><td>${a.cond==="above"?"↑ above":"↓ below"} ${formatPrice(a.price)}</td><td>${a.triggered?"triggered":"active"}</td><td><button class="btn ghost" style="margin:0;padding:5px 8px;" onclick="removeAlert(${a.id})">✕</button></td></tr>`).join("");
+}
+function removeAlert(id){ alerts = alerts.filter(a=>a.id!==id); saveAll(); renderAlertTable(); }
+window.removeAlert = removeAlert;
+function checkAlerts(){
+  let changed=false;
+  alerts.forEach(a=>{
+    if(a.triggered) return;
+    const c = allCoins.find(x=>x.symbol===a.symbol);
+    if(!c) return;
+    const hit = a.cond==="above" ? c.price>=a.price : c.price<=a.price;
+    if(hit){
+      a.triggered = true; changed = true;
+      toast(`ALERT: ${a.symbol} ${a.cond} ${formatPrice(a.price)}`);
+      if("Notification" in window && Notification.permission==="granted"){
+        new Notification("XNX Trading Alert", { body: `${a.symbol} is now ${a.cond} ${formatPrice(a.price)}` });
+      }
+    }
+  });
+  if(changed){ saveAll(); renderAlertTable(); }
+}
+
+/* =====================================================
+   SIGNAL HISTORY (section 30)
+   ===================================================== */
+function logSignalHistory(r){
+  const last = signalHistory[signalHistory.length-1];
+  if(last && last.symbol===r.symbol && last.signal===r.signal && (Date.now()-last.ts)<60000) return; // avoid spam duplicates
+  signalHistory.push({ ts: Date.now(), symbol: currentSymbol, signal: r.signal, score: r.score });
+  if(signalHistory.length>100) signalHistory = signalHistory.slice(-100);
+  saveAll(); renderHistoryTable();
+}
+function renderHistoryTable(){
+  const body = document.querySelector("#historyTable tbody");
+  const recent = signalHistory.slice(-10).reverse();
+  body.innerHTML = recent.length ? recent.map(h=>{
+    const t = new Date(h.ts);
+    const time = t.getHours().toString().padStart(2,"0")+":"+t.getMinutes().toString().padStart(2,"0");
+    const cls = h.signal==="BUY"?"buy":h.signal==="SELL"?"sell":"";
+    return `<tr style="cursor:pointer;" onclick="selectSymbol('${h.symbol}')"><td>${time}</td><td>${h.symbol.replace("USDT","")}</td><td>${cls?`<span class="tag ${cls}">${h.signal}</span>`:h.signal.replace(/_/g," ")}</td><td>${h.score}</td></tr>`;
+  }).join("") : `<tr><td colspan="4" class="empty-row">No signals logged yet</td></tr>`;
+}
+
+/* =====================================================
+   OVERNIGHT MONITOR
+   Background scan of every watchlist coin while this tab
+   stays open, culminating in a morning TRADE / NO TRADE
+   verdict at the user's chosen start time. Purely client-
+   side — it cannot run while the tab/device is closed, and
+   this app never claims otherwise.
+   ===================================================== */
+let overnight = LS.get("xnx_overnight", { date: new Date().toDateString(), targetHour: 9, running: false, startedAt: null, entries: [] });
+let overnightTimer = null;
+
+function todayStr(){ return new Date().toDateString(); }
+
+function omRolloverIfNeeded(){
+  if(overnight.date !== todayStr()){
+    overnight = { date: todayStr(), targetHour: overnight.targetHour, running: overnight.running, startedAt: overnight.running ? Date.now() : null, entries: [] };
+    LS.set("xnx_overnight", overnight);
+  }
+}
+
+document.getElementById("omTargetHour").value = overnight.targetHour;
+document.getElementById("omTargetHour").addEventListener("change", (e)=>{
+  overnight.targetHour = parseInt(e.target.value);
+  LS.set("xnx_overnight", overnight);
+  renderOvernight();
+});
+
+document.getElementById("omToggleBtn").onclick = ()=>{
+  if(overnight.running){
+    overnight.running = false;
+    if(overnightTimer){ clearInterval(overnightTimer); overnightTimer = null; }
+    LS.set("xnx_overnight", overnight);
+    toast("Overnight monitoring stopped");
+  } else {
+    if(!isUnlocked()){ toast("Overnight Monitoring needs an active membership — see plans above"); scrollToMembership(); return; }
+    if(!watchlist.length){ toast("Add at least one coin to your watchlist first"); return; }
+    omRolloverIfNeeded();
+    overnight.running = true;
+    overnight.startedAt = Date.now();
+    LS.set("xnx_overnight", overnight);
+    startOvernightTimer();
+    omScanOnce();
+    toast("Overnight monitoring started for " + watchlist.length + " coin(s)");
+  }
+  renderOvernight();
+};
+
+function startOvernightTimer(){
+  if(overnightTimer) clearInterval(overnightTimer);
+  overnightTimer = setInterval(omScanOnce, 5*60*1000); // every 5 minutes
+}
+
+async function omScanOnce(){
+  omRolloverIfNeeded();
+  if(!overnight.running) return;
+  for(const sym of watchlist.slice(0,12)){
+    try{
+      const entryData = await fetchKlines(sym, ENTRY_TF, 260);
+      const bookRes = await fetch(`${REST}/api/v3/ticker/bookTicker?symbol=${sym}`);
+      const book = await bookRes.json();
+      const bid = parseFloat(book.bidPrice), ask = parseFloat(book.askPrice);
+      const price = entryData.closes[entryData.closes.length-1];
+      const ctxMtf = await loadContextTimeframes(sym);
+      const r = computeSignal({ closes: entryData.closes, highs: entryData.highs, lows: entryData.lows, volumes: entryData.volumes, price, bid, ask }, ctxMtf);
+      overnight.entries.push({ ts: Date.now(), symbol: sym, signal: r.signal, score: r.score });
+    }catch(e){ /* skip this coin this round, keep going */ }
+  }
+  if(overnight.entries.length > 800) overnight.entries = overnight.entries.slice(-800);
+  LS.set("xnx_overnight", overnight);
+  renderOvernight();
+}
+
+function renderOvernight(){
+  omRolloverIfNeeded();
+  document.getElementById("omToggleBtn").textContent = overnight.running ? "Stop Overnight Monitoring" : "Start Overnight Monitoring";
+
+  const statusEl = document.getElementById("omStatus");
+  if(overnight.running){
+    const since = overnight.startedAt ? new Date(overnight.startedAt) : null;
+    const sinceStr = since ? since.getHours().toString().padStart(2,"0")+":"+since.getMinutes().toString().padStart(2,"0") : "--";
+    const lastScan = overnight.entries.length ? overnight.entries[overnight.entries.length-1].ts : null;
+    const minsAgo = lastScan ? Math.round((Date.now()-lastScan)/60000) : null;
+    statusEl.textContent = `Monitoring since ${sinceStr} · ${watchlist.length} coin(s) · ${lastScan ? "last scan "+minsAgo+" min ago" : "first scan running…"}`;
+  } else {
+    statusEl.textContent = "Not running — open this tab and press Start to begin watching overnight.";
+  }
+
+  // live per-coin latest reading
+  const liveBody = document.querySelector("#omLiveTable tbody");
+  if(!watchlist.length){
+    liveBody.innerHTML = `<tr><td colspan="4" class="empty-row">Add coins to your watchlist to monitor them</td></tr>`;
+  } else {
+    liveBody.innerHTML = watchlist.map(sym=>{
+      const symEntries = overnight.entries.filter(e=>e.symbol===sym);
+      const last = symEntries[symEntries.length-1];
+      const cls = last && last.signal==="BUY" ? "buy" : last && last.signal==="SELL" ? "sell" : "";
+      const sigTxt = last ? (cls?`<span class="tag ${cls}">${last.signal}</span>`:last.signal.replace(/_/g," ")) : "--";
+      return `<tr style="cursor:pointer;" onclick="selectSymbol('${sym}')"><td>${sym.replace("USDT","")}</td><td>${sigTxt}</td><td>${last?last.score:"--"}</td><td>${symEntries.length}</td></tr>`;
+    }).join("");
+  }
+
+  // morning verdict — only once local time has reached the chosen hour AND we have overnight data
+  const now = new Date();
+  const wrap = document.getElementById("omVerdictWrap");
+  if(now.getHours() >= overnight.targetHour && overnight.entries.length > 0){
+    wrap.style.display = "block";
+    document.getElementById("omVerdictTime").textContent = "as of " + now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");
+    const body = document.querySelector("#omVerdictTable tbody");
+    body.innerHTML = watchlist.map(sym=>{
+      const symEntries = overnight.entries.filter(e=>e.symbol===sym);
+      if(!symEntries.length) return `<tr><td>${sym.replace("USDT","")}</td><td colspan="3" class="empty-row">no overnight data</td></tr>`;
+      const last = symEntries[symEntries.length-1];
+      const dirEntries = symEntries.filter(e=>e.signal==="BUY"||e.signal==="SELL");
+      const sameDir = dirEntries.filter(e=>e.signal===last.signal).length;
+      const consistency = dirEntries.length ? Math.round(100*sameDir/dirEntries.length) : 0;
+      const tradeable = (last.signal==="BUY"||last.signal==="SELL") && last.score>=70 && consistency>=60;
+      const verdict = tradeable ? last.signal : "NO TRADE";
+      const vCls = tradeable ? (last.signal==="BUY"?"buy":"sell") : "";
+      return `<tr style="cursor:pointer;" onclick="selectSymbol('${sym}')"><td>${sym.replace("USDT","")}</td><td>${vCls?`<span class="tag ${vCls}">${verdict}</span>`:verdict}</td><td>${last.score}</td><td>${dirEntries.length?consistency+"%":"--"}</td></tr>`;
+    }).join("");
+  } else {
+    wrap.style.display = "none";
+  }
+}
+
+if(overnight.running){ startOvernightTimer(); }
+
+/* =====================================================
+   INIT
+   ===================================================== */
+renderTfRow();
+renderWatchTable();
+renderAlertTable();
+renderHistoryTable();
+renderPaperAccount();
+renderRisk();
+renderOvernight();
+loadCoinList().then(runAnalysis);
+setInterval(loadCoinList, 30000);
+setInterval(runAnalysis, 20000);
+setInterval(renderOvernight, 60000); // keep "last scan X min ago" and morning verdict fresh
+setInterval(async ()=>{ if(currentSymbol) mtfCache = await loadContextTimeframes(currentSymbol); }, 90000);
+</script>
+</body>
+</html>
