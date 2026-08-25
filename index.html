@@ -609,7 +609,7 @@ html,body{ background:
       <button class="btn buyopp-scan-btn" id="buyOppScanBtn" type="button">🔄 Rescan</button>
     </div>
     <div class="buyopp-list" id="buyOppList"><div class="buyopp-empty">Scanning…</div></div>
-    <div class="disclaimer" style="margin-top:10px;">Yeh sirf woh coins hain jinka score abhi BUY threshold cross kar raha hai (watchlist + top coins, current entry timeframe pe). Yeh guarantee nahi hai — khud confirm karke hi trade karein.</div>
+    <div class="disclaimer" style="margin-top:10px;">Yeh sirf woh coins hain jinka score abhi BUY threshold cross kar raha hai (watchlist + top 15 sabse zyada volume/use wale coins, current entry timeframe pe). Yeh guarantee nahi hai — khud confirm karke hi trade karein.</div>
   </div>
 
   <div class="card">
@@ -1324,9 +1324,15 @@ function renderQuickCoins(){
 let buyOppScanning = false;
 let buyOppResults = [];
 
+const BUYOPP_SCAN_SIZE = 15;
 function buyOppScanList(){
-  const list = [...QUICK, ...watchlist];
-  return [...new Set(list)].slice(0, 12);
+  // Watchlist coins are always included (user picked them on purpose),
+  // topped up with the highest-volume — i.e. most-used — coins from the
+  // live Binance list until we hit BUYOPP_SCAN_SIZE. Falls back to the
+  // QUICK list if the full coin list hasn't loaded yet.
+  const byVolume = allCoins.length ? allCoins.map(c=>c.symbol) : QUICK;
+  const list = [...watchlist, ...byVolume];
+  return [...new Set(list)].slice(0, BUYOPP_SCAN_SIZE);
 }
 
 async function scanBuyOpportunities(){
