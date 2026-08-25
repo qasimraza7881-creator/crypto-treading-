@@ -140,6 +140,12 @@
   .coin-opt .px{ color:var(--ink-soft); }
   .coin-opt .chg.up{ color:var(--green); } .coin-opt .chg.down{ color:var(--red); }
   .coin-dropdown .cd-empty{ padding:14px; text-align:center; color:var(--ink-soft); font-size:12px; }
+  .coin-opt.hl{ background:var(--surface-2); }
+  .coin-nav-bar{ display:none; align-items:center; justify-content:flex-end; gap:8px; margin-top:6px; }
+  .coin-nav-bar.show{ display:flex; }
+  .coin-nav-btn{ width:34px; height:34px; border-radius:10px; border:1.5px solid var(--red-line); background:#2a2a2a; color:#fff; font-size:15px; display:flex; align-items:center; justify-content:center; }
+  .coin-nav-btn:active{ background:#111; }
+  .coin-nav-btn.confirm{ background:#3b82f6; border-color:#3b82f6; }
   .status-pill{ display:flex; align-items:center; gap:6px; padding:0 12px; border-radius:12px; background:var(--green-soft); color:var(--green); font-size:12px; font-weight:600; font-family:'IBM Plex Mono',monospace; white-space:nowrap; }
   .status-pill.bad{ background:var(--red-soft); color:var(--red-deep); }
   .dot{ width:6px;height:6px;border-radius:50%;background:currentColor; animation:pulse 1.6s infinite; }
@@ -435,6 +441,11 @@
         <input id="coinSearch" list="coinDatalist" autocomplete="off" autocapitalize="characters" placeholder="Search any coin — BTC, ETH, SOL..." />
         <datalist id="coinDatalist"></datalist>
         <div class="coin-dropdown" id="coinDropdown"></div>
+        <div class="coin-nav-bar" id="coinNavBar">
+          <button type="button" class="coin-nav-btn" id="coinNavUp" title="Up">▲</button>
+          <button type="button" class="coin-nav-btn" id="coinNavDown" title="Down">▼</button>
+          <button type="button" class="coin-nav-btn confirm" id="coinNavConfirm" title="Select">✓</button>
+        </div>
       </div>
     </div>
 
@@ -1072,13 +1083,38 @@ function formatPrice(p){
 /* ---- live coin search dropdown (works on mobile/iOS, unlike relying on <datalist> alone) ---- */
 const coinSearchEl = document.getElementById("coinSearch");
 const coinDropdownEl = document.getElementById("coinDropdown");
+const coinNavBarEl = document.getElementById("coinNavBar");
 
 let pendingSymbol = currentSymbol; // coin chosen in the Analyze Setup card, applied when ANALYZE is pressed
+let coinHighlightIdx = -1; // which row in the open dropdown is currently highlighted (via ▲▼ buttons)
+
+function selectCoinOption(opt){
+  if(!opt) return;
+  const sym = opt.dataset.sym;
+  coinSearchEl.value = sym;
+  pendingSymbol = sym;
+  coinDropdownEl.classList.remove("show");
+  coinNavBarEl.classList.remove("show");
+  coinHighlightIdx = -1;
+  updateSetupCurrentText();
+}
+
+function setCoinHighlight(idx){
+  const opts = coinDropdownEl.querySelectorAll(".coin-opt");
+  if(!opts.length) return;
+  coinHighlightIdx = ((idx % opts.length) + opts.length) % opts.length; // wrap around
+  opts.forEach(o => o.classList.remove("hl"));
+  const el = opts[coinHighlightIdx];
+  el.classList.add("hl");
+  el.scrollIntoView({ block: "nearest" });
+}
 
 function renderCoinDropdown(list){
+  coinHighlightIdx = -1;
   if(!list.length){
     coinDropdownEl.innerHTML = `<div class="cd-empty">No matching coin — try BTC, ETH, SOL, DOGE...</div>`;
     coinDropdownEl.classList.add("show");
+    coinNavBarEl.classList.remove("show");
     return;
   }
   coinDropdownEl.innerHTML = list.map(c=>{
@@ -1091,14 +1127,9 @@ function renderCoinDropdown(list){
     </div>`;
   }).join("");
   coinDropdownEl.classList.add("show");
+  coinNavBarEl.classList.add("show");
   coinDropdownEl.querySelectorAll(".coin-opt").forEach(opt=>{
-    opt.addEventListener("click", ()=>{
-      const sym = opt.dataset.sym;
-      coinSearchEl.value = sym;
-      pendingSymbol = sym;
-      coinDropdownEl.classList.remove("show");
-      updateSetupCurrentText();
-    });
+    opt.addEventListener("click", ()=> selectCoinOption(opt));
   });
 }
 
@@ -1116,18 +1147,29 @@ coinSearchEl.addEventListener("input", ()=> renderCoinDropdown(searchCoins(coinS
 coinSearchEl.addEventListener("change", (e)=>{
   const val = e.target.value.toUpperCase().trim();
   const match = allCoins.find(c => c.symbol === val) || allCoins.find(c => c.symbol === val + "USDT");
-  if(match){ coinDropdownEl.classList.remove("show"); pendingSymbol = match.symbol; updateSetupCurrentText(); }
+  if(match){ coinDropdownEl.classList.remove("show"); coinNavBarEl.classList.remove("show"); pendingSymbol = match.symbol; updateSetupCurrentText(); }
 });
 coinSearchEl.addEventListener("keydown", (e)=>{
+  if(e.key === "ArrowDown"){ e.preventDefault(); setCoinHighlight(coinHighlightIdx + 1); return; }
+  if(e.key === "ArrowUp"){ e.preventDefault(); setCoinHighlight(coinHighlightIdx - 1); return; }
   if(e.key === "Enter"){
+    const opts = coinDropdownEl.querySelectorAll(".coin-opt");
+    if(coinHighlightIdx >= 0 && opts[coinHighlightIdx]){ selectCoinOption(opts[coinHighlightIdx]); coinSearchEl.blur(); document.getElementById("analyzeBtn").click(); return; }
     const val = coinSearchEl.value.toUpperCase().trim();
     const exact = allCoins.find(c => c.symbol === val) || allCoins.find(c => c.symbol === val + "USDT");
     const first = exact || searchCoins(coinSearchEl.value)[0];
-    if(first){ coinSearchEl.value = first.symbol; pendingSymbol = first.symbol; coinDropdownEl.classList.remove("show"); coinSearchEl.blur(); document.getElementById("analyzeBtn").click(); }
+    if(first){ coinSearchEl.value = first.symbol; pendingSymbol = first.symbol; coinDropdownEl.classList.remove("show"); coinNavBarEl.classList.remove("show"); coinSearchEl.blur(); document.getElementById("analyzeBtn").click(); }
   }
 });
+document.getElementById("coinNavUp").addEventListener("click", ()=> setCoinHighlight(coinHighlightIdx <= 0 ? coinDropdownEl.querySelectorAll(".coin-opt").length - 1 : coinHighlightIdx - 1));
+document.getElementById("coinNavDown").addEventListener("click", ()=> setCoinHighlight(coinHighlightIdx + 1));
+document.getElementById("coinNavConfirm").addEventListener("click", ()=>{
+  const opts = coinDropdownEl.querySelectorAll(".coin-opt");
+  const opt = coinHighlightIdx >= 0 ? opts[coinHighlightIdx] : opts[0];
+  selectCoinOption(opt);
+});
 document.addEventListener("click", (e)=>{
-  if(!e.target.closest(".search-wrap")) coinDropdownEl.classList.remove("show");
+  if(!e.target.closest(".search-wrap")){ coinDropdownEl.classList.remove("show"); coinNavBarEl.classList.remove("show"); }
 });
 
 /* ---- Analyze Setup card: COIN + TIMEFRAME + ANALYZE button + auto-refresh ---- */
