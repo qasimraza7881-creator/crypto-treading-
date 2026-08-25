@@ -1450,6 +1450,7 @@ function selectSymbol(sym){
   document.getElementById("pairName").textContent = sym;
   renderQuickCoins();
   mtfCache = {};
+  startPriceStream(sym);
   runAnalysis();
   document.getElementById("chart").scrollIntoView({behavior:"smooth", block:"center"});
 }
@@ -1785,6 +1786,46 @@ function renderPrice(price, change){
   const el = document.getElementById("priceChange");
   el.textContent = (change>=0?"▲ ":"▼ ")+Math.abs(change).toFixed(2)+"% (24h)";
   el.style.color = change>=0 ? "var(--green)" : "var(--red)";
+}
+
+/* =====================================================
+   LIVE PRICE STREAM (bookTicker via WebSocket)
+   Keeps the price shown on screen matched to Binance's
+   live rate tick-by-tick, instead of waiting for the
+   60-second analysis cycle to refresh it.
+   ===================================================== */
+let priceWs = null;
+let priceWsSymbol = null;
+
+function updateLivePrice(price){
+  const el = document.getElementById("priceNow");
+  if(el) el.textContent = "$"+formatPrice(price);
+}
+
+function startPriceStream(sym){
+  if(priceWs){
+    try{ priceWs.onclose = null; priceWs.onerror = null; priceWs.close(); }catch(e){}
+    priceWs = null;
+  }
+  priceWsSymbol = sym;
+  try{
+    priceWs = new WebSocket(`wss://stream.binance.com:9443/ws/${sym.toLowerCase()}@bookTicker`);
+  }catch(e){ return; }
+
+  priceWs.onmessage = (ev)=>{
+    if(priceWsSymbol !== currentSymbol) return; // ignore a stale socket left over from a symbol switch
+    try{
+      const d = JSON.parse(ev.data);
+      const bid = parseFloat(d.b), ask = parseFloat(d.a);
+      if(!isNaN(bid) && !isNaN(ask)) updateLivePrice((bid+ask)/2);
+    }catch(e){}
+  };
+  priceWs.onclose = ()=>{
+    if(priceWsSymbol === currentSymbol){
+      setTimeout(()=>{ if(priceWsSymbol===currentSymbol) startPriceStream(currentSymbol); }, 2000);
+    }
+  };
+  priceWs.onerror = ()=>{ try{ priceWs.close(); }catch(e){} };
 }
 
 function renderSignal(r){
@@ -2252,6 +2293,7 @@ renderHistoryTable();
 renderPaperAccount();
 renderRisk();
 renderOvernight();
+startPriceStream(currentSymbol);
 loadCoinList().then(runAnalysis);
 setInterval(loadCoinList, 30000);
 if(document.getElementById("autoRefreshToggle").checked) startAutoRefresh();
