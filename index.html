@@ -264,6 +264,14 @@
   .buyopp-item .px{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); }
   .buyopp-empty{ text-align:center; padding:16px 10px; color:var(--ink-soft); font-size:13px; font-family:'IBM Plex Mono',monospace; }
 
+  .sellopp-card{ border-color:var(--red); }
+  .sellopp-scan-btn{ width:auto; margin:0; padding:8px 14px; font-size:12px; background:var(--red); }
+  .sellopp-item{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:11px 13px; border-radius:12px; border:1.5px solid var(--red); background:var(--red-soft); cursor:pointer; }
+  .sellopp-item .sym{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:13.5px; color:var(--ink); }
+  .sellopp-item .tf{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-soft); margin-top:2px; }
+  .sellopp-item .score{ font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:700; color:var(--red); }
+  .sellopp-item .px{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); }
+
   /* generic panel styling reused for risk / sizing / paper / watchlist / alerts / history */
   .panel-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; min-width:0; }
   .field{ display:flex; flex-direction:column; gap:4px; min-width:0; }
@@ -593,6 +601,26 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
     </div>
     <div class="buyopp-list" id="buyOppList"><div class="buyopp-empty">Scanning…</div></div>
     <div class="disclaimer" style="margin-top:10px;" id="buyOppDisclaimer">Yeh sirf woh coins hain jinka score abhi BUY threshold cross kar raha hai (watchlist + top 15 sabse zyada volume/use wale coins, current entry timeframe pe). Yeh guarantee nahi hai — khud confirm karke hi trade karein.</div>
+  </div>
+
+  <div class="engine-title">🔴 Sell Opportunities <span style="font-size:11px; color:var(--ink-soft); font-weight:400; font-family:'IBM Plex Mono',monospace;">— jo coins abhi sell criteria pura kar rahe hain</span></div>
+  <div class="card sellopp-card" id="sellOppCard">
+    <div class="buyopp-allrow">
+      <div>
+        <div class="lbl">Scan ALL coins</div>
+        <div class="sub" id="sellOppAllSub">Off — sirf top 15 check ho rahe hain</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="sellOppAllToggle" />
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="buyopp-head">
+      <div class="buyopp-status" id="sellOppStatus">Scan shuru ho raha hai…</div>
+      <button class="btn sellopp-scan-btn" id="sellOppScanBtn" type="button">🔄 Rescan</button>
+    </div>
+    <div class="buyopp-list" id="sellOppList"><div class="buyopp-empty">Scanning…</div></div>
+    <div class="disclaimer" style="margin-top:10px;" id="sellOppDisclaimer">Yeh sirf woh coins hain jinka score abhi SELL threshold cross kar raha hai (watchlist + top 15 sabse zyada volume/use wale coins, current entry timeframe pe). Yeh guarantee nahi hai — khud confirm karke hi trade karein.</div>
   </div>
 
   <div class="card">
@@ -1506,6 +1534,77 @@ async function scanBuyOpportunities(){
   buyOppScanning = false;
 }
 
+/* =====================================================
+   SELL OPPORTUNITIES SCANNER
+   Same idea as the BUY scanner above, but surfaces coins
+   whose live score currently clears the SELL gate instead.
+   ===================================================== */
+let sellOppScanning = false;
+let sellOppResults = [];
+
+const SELLOPP_SCAN_SIZE = 15;
+let sellOppScanAll = LS.get("xnx_sellopp_scan_all", false);
+function sellOppScanList(){
+  const byVolume = allCoins.length ? allCoins.map(c=>c.symbol) : QUICK;
+  const list = [...watchlist, ...byVolume];
+  const deduped = [...new Set(list)];
+  return sellOppScanAll ? deduped : deduped.slice(0, SELLOPP_SCAN_SIZE);
+}
+
+async function scanSellOpportunities(){
+  if(sellOppScanning) return;
+  sellOppScanning = true;
+  const statusEl = document.getElementById("sellOppStatus");
+  const listEl = document.getElementById("sellOppList");
+  const symbols = sellOppScanList();
+  const found = [];
+
+  for(let i=0; i<symbols.length; i++){
+    const sym = symbols[i];
+    statusEl.textContent = `Scanning ${i+1}/${symbols.length} — ${sym.replace("USDT","")}…`;
+    try{
+      const entryData = await fetchKlines(sym, ENTRY_TF, 260);
+      const price = entryData.closes[entryData.closes.length-1];
+      const ctxTf = await loadContextTimeframes(sym);
+      const result = computeSignal({ closes: entryData.closes, highs: entryData.highs, lows: entryData.lows, volumes: entryData.volumes, price, bid: price, ask: price }, ctxTf);
+      if(result.signal === "SELL"){
+        found.push({ symbol: sym, score: result.score, entry: result.entry, price });
+      }
+    }catch(e){ /* skip coin on data error, keep scanning the rest */ }
+  }
+
+  found.sort((a,b)=> b.score - a.score);
+  sellOppResults = found;
+  const scanTf = ENTRY_TF.toUpperCase();
+
+  const discEl = document.getElementById("sellOppDisclaimer");
+  if(discEl){
+    discEl.textContent = sellOppScanAll
+      ? "Yeh sirf woh coins hain jinka score abhi SELL threshold cross kar raha hai (watchlist + Binance ke har live USDT coin, current entry timeframe pe). Yeh guarantee nahi hai — khud confirm karke hi trade karein."
+      : "Yeh sirf woh coins hain jinka score abhi SELL threshold cross kar raha hai (watchlist + top " + SELLOPP_SCAN_SIZE + " sabse zyada volume/use wale coins, current entry timeframe pe). Yeh guarantee nahi hai — khud confirm karke hi trade karein.";
+  }
+
+  if(found.length === 0){
+    listEl.innerHTML = `<div class="buyopp-empty">Abhi ${scanTf} pe koi coin SELL criteria pura nahi kar raha. NO_TRADE bhi ek valid result hai.</div>`;
+  } else {
+    listEl.innerHTML = found.map(f => `
+      <div class="sellopp-item" data-sym="${f.symbol}">
+        <div>
+          <div class="sym">${f.symbol.replace("USDT","/USDT")}</div>
+          <div class="tf">${scanTf} · entry ≈ $${formatPrice(f.entry)}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="score">${f.score}/100</div>
+          <div class="px">$${formatPrice(f.price)}</div>
+        </div>
+      </div>`).join("");
+    listEl.querySelectorAll(".sellopp-item").forEach(item => { item.onclick = () => selectSymbol(item.dataset.sym); });
+  }
+
+  statusEl.textContent = `Last scan just now · ${symbols.length} coin(s) checked · ${found.length} SELL match`;
+  sellOppScanning = false;
+}
+
 function setDataStatus(ok){
   dataStatus = ok ? "CONNECTED" : "DISCONNECTED";
   const pill = document.getElementById("statusPill");
@@ -1631,6 +1730,7 @@ document.getElementById("analyzeBtn").onclick = ()=>{
   selectSymbol(pendingSymbol);
   document.getElementById("setupCurrentText").textContent = `${pendingSymbol.replace("USDT","/USDT")} · ${tf.toUpperCase()} — analyzing…`;
   scanBuyOpportunities();
+  scanSellOpportunities();
 };
 
 document.getElementById("buyOppScanBtn").onclick = scanBuyOpportunities;
@@ -1649,6 +1749,24 @@ buyOppAllToggleEl.onchange = () => {
   LS.set("xnx_buyopp_scan_all", buyOppScanAll);
   updateBuyOppAllSub();
   scanBuyOpportunities();
+};
+
+document.getElementById("sellOppScanBtn").onclick = scanSellOpportunities;
+
+const sellOppAllToggleEl = document.getElementById("sellOppAllToggle");
+const sellOppAllSubEl = document.getElementById("sellOppAllSub");
+sellOppAllToggleEl.checked = sellOppScanAll;
+function updateSellOppAllSub(){
+  sellOppAllSubEl.textContent = sellOppScanAll
+    ? "On — watchlist + har live coin check ho raha hai"
+    : "Off — sirf top " + SELLOPP_SCAN_SIZE + " check ho rahe hain";
+}
+updateSellOppAllSub();
+sellOppAllToggleEl.onchange = () => {
+  sellOppScanAll = sellOppAllToggleEl.checked;
+  LS.set("xnx_sellopp_scan_all", sellOppScanAll);
+  updateSellOppAllSub();
+  scanSellOpportunities();
 };
 
 document.getElementById("setupFavBtn").onclick = ()=>{
@@ -2549,9 +2667,10 @@ renderPaperAccount();
 renderRisk();
 renderOvernight();
 startPriceStream(currentSymbol);
-loadCoinList().then(runAnalysis).then(scanBuyOpportunities);
+loadCoinList().then(runAnalysis).then(scanBuyOpportunities).then(scanSellOpportunities);
 setInterval(loadCoinList, 30000);
 setInterval(scanBuyOpportunities, 120000); // rescan buy opportunities every 2 minutes
+setInterval(scanSellOpportunities, 120000); // rescan sell opportunities every 2 minutes
 if(document.getElementById("autoRefreshToggle").checked) startAutoRefresh();
 setInterval(renderOvernight, 60000); // keep "last scan X min ago" and morning verdict fresh
 setInterval(async ()=>{ if(currentSymbol) mtfCache = await loadContextTimeframes(currentSymbol); }, 90000);
