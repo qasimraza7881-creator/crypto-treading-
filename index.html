@@ -264,6 +264,12 @@
   .buyopp-item .px{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); }
   .buyopp-empty{ text-align:center; padding:16px 10px; color:var(--ink-soft); font-size:13px; font-family:'IBM Plex Mono',monospace; }
 
+  .advisor-box{ margin-top:14px; padding:14px; border-radius:14px; background:var(--surface-2); border:1.5px dashed var(--red-line); }
+  .advisor-title{ font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:700; color:var(--red-deep); margin-bottom:6px; }
+  .advisor-text{ font-size:13.5px; line-height:1.55; color:var(--ink); }
+  .advisor-sizing{ margin-top:10px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft); display:flex; flex-direction:column; gap:3px; }
+  .advisor-sizing b{ color:var(--ink); }
+
   .sellopp-card{ border-color:var(--red); }
   .sellopp-scan-btn{ width:auto; margin:0; padding:8px 14px; font-size:12px; background:var(--red); }
   .sellopp-item{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:11px 13px; border-radius:12px; border:1.5px solid var(--red); background:var(--red-soft); cursor:pointer; }
@@ -660,6 +666,13 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
 
     <div class="reason"><b>Reason:</b> <span id="reasonText">Waiting for data…</span></div>
     <div class="invalid" id="invalidBox" style="display:none;"><b>Invalidation:</b> <span id="invalidText"></span></div>
+
+    <div class="advisor-box" id="advisorBox">
+      <div class="advisor-title">🧭 Advisor Note</div>
+      <div class="advisor-text" id="advisorText">Analyze karke advisor note yahan dikhega.</div>
+      <div class="advisor-sizing" id="advisorSizing"></div>
+      <div class="disclaimer" style="margin-top:8px;">Yeh sirf automated technical analysis hai, kisi licensed financial advisor ki jagah nahi le sakta. Trade karne se pehle khud research karein aur sirf utna risk lein jo afford kar sakein.</div>
+    </div>
 
     <button class="btn" id="openPaperBtn" style="display:none;">Open Paper Trade at Market</button>
   </div>
@@ -2223,6 +2236,54 @@ function renderSignal(r){
   // keep sizing calculator entry/SL in sync if empty
   const pbEntry = document.getElementById("pbEntry"), pbSL = document.getElementById("pbSL");
   if(tradable && (!pbEntry.dataset.touched)){ pbEntry.value = r.entry.toFixed(6); pbSL.value = r.sl.toFixed(6); recalcSizing(); }
+
+  renderAdvisorNote(r, tradable);
+}
+
+/* =====================================================
+   ADVISOR NOTE
+   Turns the raw score breakdown + reasons into a plain-
+   language note, plus a quick position-size read-out
+   pulled from the existing Trade-tab sizing calculator
+   (account balance / risk % inputs). This is still just
+   automated technical analysis — not licensed advice —
+   the disclaimer next to it says so explicitly.
+   ===================================================== */
+function renderAdvisorNote(r, tradable){
+  const textEl = document.getElementById("advisorText");
+  const sizingEl = document.getElementById("advisorSizing");
+  if(!textEl || !sizingEl) return;
+
+  const weak = r.breakdown.filter(b => b[1]/b[2] < 0.5).map(b => b[0]);
+  const strong = r.breakdown.filter(b => b[1]/b[2] >= 0.8).map(b => b[0]);
+  const dirWord = r.dir === "up" ? "bullish" : "bearish";
+
+  let note;
+  if(r.signal === "BUY" || r.signal === "SELL"){
+    note = `Score ${r.score}/100 ke sath ${r.signal} threshold clear ho raha hai — ${strong.length ? strong.join(", ")+" strong hain" : "koi ek component bahut strong nahi, lekin combined score kaafi hai"}.`;
+    if(weak.length) note += ` Dhyan rahe: ${weak.join(", ")} abhi bhi kamzor ${weak.length>1?"hain":"hai"}, isliye position size chota rakhein.`;
+    note += ` Risk:Reward TP1 tak 1:${r.rr.toFixed(1)} hai — stop-loss se pehle hi decide kar lein ke agar invalidation hit ho to exit karna hai.`;
+  } else {
+    note = `Score sirf ${r.score}/100 hai, jo trade threshold se neeche hai — market abhi ${dirWord} bias to dikha raha hai lekin confirmation incomplete hai.`;
+    if(weak.length) note += ` Sabse bada gap: ${weak.join(", ")} — jab tak yeh improve na ho, entry lena tool ke apne rules ke khilaf hoga.`;
+    note += ` Best move abhi wait karna hai; NO_TRADE bhi ek valid, disciplined decision hai.`;
+  }
+  textEl.textContent = note;
+
+  if(tradable){
+    const bal = parseFloat(document.getElementById("pbBalance")?.value) || 0;
+    const riskPct = parseFloat(document.getElementById("pbRisk")?.value) || 0;
+    const stopDist = Math.abs(r.entry - r.sl);
+    const maxLoss = bal * (riskPct/100);
+    const size = stopDist > 0 ? maxLoss / stopDist : 0;
+    const notional = size * r.entry;
+    sizingEl.innerHTML = `
+      <div>Account <b>$${bal.toLocaleString(undefined,{maximumFractionDigits:2})}</b> · Risking <b>${riskPct}%</b> = <b>$${maxLoss.toFixed(2)}</b> per trade</div>
+      <div>Suggested size at this stop-loss: <b>${size>0?size.toFixed(6):"--"}</b> units (≈ $${notional.toFixed(2)} notional)</div>
+      <div>Adjust balance/risk % in the Trade tab's sizing calculator — it updates here automatically.</div>`;
+  } else {
+    sizingEl.innerHTML = `<div>No active BUY/SELL setup — position sizing will show once a trade is signaled.</div>`;
+  }
 }
 
 function renderChart(candles, entry, sl){
@@ -2290,6 +2351,7 @@ function renderChart(candles, entry, sl){
   document.getElementById(id).addEventListener("input", (e)=>{ e.target.dataset.touched = "1"; recalcSizing(); });
 });
 ["pbBalance","pbRisk","pbLev"].forEach(id=> document.getElementById(id).addEventListener("input", recalcSizing));
+["pbBalance","pbRisk"].forEach(id=> document.getElementById(id).addEventListener("input", ()=>{ if(lastSignalCtx) renderAdvisorNote(lastSignalCtx, lastSignalCtx.signal==="BUY"||lastSignalCtx.signal==="SELL"); }));
 document.getElementById("pbFill").onclick = ()=>{
   if(!lastSignalCtx || !(lastSignalCtx.signal==="BUY"||lastSignalCtx.signal==="SELL")){ toast("No active BUY/SELL setup right now"); return; }
   document.getElementById("pbEntry").value = lastSignalCtx.entry.toFixed(6);
