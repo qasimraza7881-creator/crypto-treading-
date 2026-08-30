@@ -226,6 +226,38 @@
 
   .score-breakdown{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
   .sb-chip{ font-family:'IBM Plex Mono',monospace; font-size:10px; background:#fff; border:1px solid var(--red-line); border-radius:8px; padding:4px 7px; color:var(--ink-soft); }
+  .pattern-row{ margin-top:8px; }
+  .pattern-chip{ display:inline-flex; align-items:center; gap:6px; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; border-radius:10px; padding:6px 10px; }
+  .pattern-chip.bullish{ background:var(--green-soft); color:var(--green); border:1px solid var(--green); }
+  .pattern-chip.bearish{ background:var(--red-soft); color:var(--red-deep); border:1px solid var(--red-deep); }
+  .pattern-chip.neutral{ background:var(--amber-soft); color:var(--amber); border:1px solid var(--amber); }
+  .breakout-warning{ margin-top:8px; font-size:12px; line-height:1.4; background:var(--amber-soft); border:1px dashed var(--amber); color:var(--amber); border-radius:12px; padding:9px 12px; }
+  .pressure-row{ margin:6px 0; }
+  .pressure-lbl{ font-size:11.5px; color:var(--ink-soft); display:flex; justify-content:space-between; margin-bottom:3px; font-family:'IBM Plex Mono',monospace; }
+  .pressure-bar{ height:7px; border-radius:5px; background:var(--surface-2); overflow:hidden; }
+  .pressure-fill{ height:100%; border-radius:5px; transition:width .3s; }
+  .pressure-fill.buy{ background:var(--green); }
+  .pressure-fill.sell{ background:var(--red); }
+  .conf-level-label{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:12.5px; padding:8px 10px; border-radius:10px; text-align:center; }
+  .conf-level-label.lvl-0{ background:var(--surface-2); color:var(--ink-soft); }
+  .conf-level-label.lvl-1{ background:var(--amber-soft); color:var(--amber); }
+  .conf-level-label.lvl-2{ background:var(--amber-soft); color:var(--amber); }
+  .conf-level-label.lvl-3{ background:var(--green-soft); color:var(--green); }
+  .conf-dots{ display:flex; gap:5px; margin-top:8px; justify-content:center; }
+  .conf-dot{ width:12px; height:12px; border-radius:50%; background:var(--surface-2); border:1px solid var(--red-line); }
+  .conf-dot.lit{ background:var(--green); border-color:var(--green); }
+  .history-stats{ display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+  .hstat{ text-align:center; background:var(--surface-2); border-radius:10px; padding:8px 4px; }
+  .hstat .k{ font-size:9.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em; }
+  .hstat .v{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:14px; margin-top:2px; }
+  .chart-zoom-row{ display:flex; gap:8px; margin-top:6px; }
+  .chart-zoom-btn{ flex:1; margin:0; padding:6px 8px; font-size:11px; }
+  .ana-row-title{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; }
+  .ana-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .ana-item{ background:var(--surface-2); border-radius:10px; padding:8px 10px; }
+  .ana-item .k{ font-size:10px; color:var(--ink-soft); text-transform:uppercase; }
+  .ana-item .v{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:13px; margin-top:2px; }
+  .ana-item .v.buy{ color:var(--green); } .ana-item .v.sell{ color:var(--red-deep); }
 
   .levels{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; min-width:0; }
   .level-box{ background:#fff; border:1px solid var(--red-line); border-radius:14px; padding:12px 14px; min-width:0; overflow:hidden; }
@@ -644,11 +676,44 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
     </div>
     <div class="tf-row" id="tfRow"></div>
     <canvas id="chart" width="600" height="220"></canvas>
+    <div class="chart-zoom-row">
+      <button class="btn ghost chart-zoom-btn" type="button" onclick="chartZoom(20)">🔍− Zoom out</button>
+      <button class="btn ghost chart-zoom-btn" type="button" onclick="chartZoom(-20)">🔍+ Zoom in</button>
+    </div>
     <div class="price-row">
       <div>Price <b id="priceNow">--</b></div>
       <div id="priceChange">--</div>
     </div>
     <div class="mtf-row" id="mtfRow"></div>
+  </div>
+
+  <div class="card" id="liveCandleBox">
+    <div class="card-head"><div class="pair-name" style="font-size:14px;">Current Candle (forming)</div><span class="v" id="lcType">--</span></div>
+    <div class="pressure-row">
+      <div class="pressure-lbl">Buy Pressure <b id="lcBuyPct">--</b></div>
+      <div class="pressure-bar"><div class="pressure-fill buy" id="lcBuyFill" style="width:0%"></div></div>
+    </div>
+    <div class="pressure-row">
+      <div class="pressure-lbl">Sell Pressure <b id="lcSellPct">--</b></div>
+      <div class="pressure-bar"><div class="pressure-fill sell" id="lcSellFill" style="width:0%"></div></div>
+    </div>
+    <div class="tf-badge" style="margin-top:6px;">Volume: <span id="lcVolStrength">--</span></div>
+
+    <div class="engine-title" style="margin:14px 0 4px; font-size:12px;">Next Candle — Probability Estimate</div>
+    <div class="disclaimer" style="margin:0 0 8px;">Estimate only — not a guaranteed prediction.</div>
+    <div class="pressure-row">
+      <div class="pressure-lbl">Bullish <b id="nextBullPct">--</b></div>
+      <div class="pressure-bar"><div class="pressure-fill buy" id="nextBullFill" style="width:0%"></div></div>
+    </div>
+    <div class="pressure-row">
+      <div class="pressure-lbl">Bearish <b id="nextBearPct">--</b></div>
+      <div class="pressure-bar"><div class="pressure-fill sell" id="nextBearFill" style="width:0%"></div></div>
+    </div>
+
+    <div class="engine-title" style="margin:14px 0 4px; font-size:12px;">Trade Confirmation</div>
+    <div id="confLevelLabel" class="conf-level-label lvl-0">LEVEL 0 · NO SETUP</div>
+    <div class="conf-dots" id="confDots"></div>
+    <div class="sub" id="confLevelSub" style="margin-top:4px;">--</div>
   </div>
 
   <div class="engine-title">Decision Engine</div>
@@ -659,6 +724,8 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
     <div class="conf-bar"><div class="conf-fill none" id="confFill" style="width:0%"></div></div>
     <div class="conf-score" id="confScore">0 / 100</div>
     <div class="score-breakdown" id="scoreBreakdown"></div>
+    <div class="pattern-row" id="patternRow" style="display:none;"></div>
+    <div class="breakout-warning" id="breakoutWarning" style="display:none;"></div>
 
     <div class="levels">
       <div class="level-box entry"><div class="k">ENTRY ZONE</div><div class="v" id="entryVal">--</div></div>
@@ -683,6 +750,7 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
     </div>
 
     <button class="btn" id="openPaperBtn" style="display:none;">Open Paper Trade at Market</button>
+    <button class="btn secondary" type="button" style="margin-top:8px;" onclick="showTab('analysis')">📋 View Full AI Analysis</button>
   </div>
 
   <div class="disclaimer">Real Binance market data. No fabricated prices. NO_TRADE is a valid, expected result. This is analysis, not financial advice — no profit is guaranteed.</div>
@@ -761,6 +829,41 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
   </div>
 
   <div class="engine-title">Settings</div>
+  <div class="card" style="margin-bottom:16px;">
+    <div class="panel-grid">
+      <div class="field"><label>DEFAULT PAIR</label>
+        <select id="setDefaultPair">
+          <option value="BTCUSDT">BTC/USDT</option>
+          <option value="ETHUSDT">ETH/USDT</option>
+          <option value="BNBUSDT">BNB/USDT</option>
+          <option value="SOLUSDT">SOL/USDT</option>
+          <option value="XRPUSDT">XRP/USDT</option>
+          <option value="DOGEUSDT">DOGE/USDT</option>
+        </select>
+      </div>
+      <div class="field"><label>DEFAULT TIMEFRAME</label>
+        <select id="setDefaultTF">
+          <option value="5m">5 Minutes</option>
+          <option value="15m">15 Minutes</option>
+          <option value="1h">1 Hour</option>
+          <option value="4h">4 Hours</option>
+          <option value="1d">1 Day</option>
+        </select>
+      </div>
+      <div class="field"><label>MIN CONFIDENCE %</label><input type="number" id="setMinConf" min="30" max="95" step="1" /></div>
+      <div class="field"><label>MIN RISK/REWARD</label><input type="number" id="setMinRR" min="1" max="5" step="0.1" /></div>
+    </div>
+    <div class="mode-row" style="margin-top:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:9px 4px;">
+        <span style="font-size:12.5px;color:var(--ink-soft);">In-app / browser notifications</span>
+        <label class="switch"><input type="checkbox" id="setNotifToggle" /><span class="slider"></span></label>
+      </div>
+    </div>
+    <button class="btn secondary" id="saveSettingsBtn" type="button" style="margin-top:10px;">Save Settings</button>
+    <div class="sub" style="margin-top:6px;">Default pair/timeframe apply next time you open the app. Min confidence / R:R change the Decision Engine's BUY/SELL threshold immediately.</div>
+  </div>
+
+  <div class="engine-title">Connections</div>
   <div class="card" style="margin-bottom:16px;">
     <div class="unavail-list">
       <div><span class="badge">CONNECTED</span> Live crypto prices &amp; candles — Binance public REST API</div>
@@ -914,9 +1017,60 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
   <div class="tab-page" data-page="history">
   <div class="engine-title">Signal History</div>
   <div class="card">
-    <table class="mini" id="historyTable"><thead><tr><th>Time</th><th>Symbol</th><th>Signal</th><th>Score</th></tr></thead><tbody></tbody></table>
+    <div class="history-stats" id="historyStats"></div>
+  </div>
+  <div class="card">
+    <table class="mini" id="historyTable"><thead><tr><th>Time</th><th>Symbol</th><th>Signal</th><th>Score</th><th>Result</th></tr></thead><tbody></tbody></table>
   </div>
   </div><!-- /tab-page: history -->
+
+  <!-- AI Analysis (detailed breakdown) -->
+  <div class="tab-page" data-page="analysis">
+  <button class="btn ghost" type="button" style="margin-bottom:10px;" onclick="showTab('home')">← Back to Home</button>
+  <div class="engine-title">AI Analysis — <span id="anaPairLabel">--</span></div>
+
+  <div class="card">
+    <div class="ana-row-title">Market Structure &amp; Trend</div>
+    <div class="ana-grid" id="anaStructure"></div>
+  </div>
+
+  <div class="card">
+    <div class="ana-row-title">EMA (9 / 20 / 50 / 200)</div>
+    <div class="ana-grid" id="anaEma"></div>
+  </div>
+
+  <div class="card">
+    <div class="ana-row-title">RSI (14)</div>
+    <div class="ana-grid" id="anaRsi"></div>
+  </div>
+
+  <div class="card">
+    <div class="ana-row-title">MACD</div>
+    <div class="ana-grid" id="anaMacd"></div>
+  </div>
+
+  <div class="card">
+    <div class="ana-row-title">Volume</div>
+    <div class="ana-grid" id="anaVolume"></div>
+  </div>
+
+  <div class="card">
+    <div class="ana-row-title">Support / Resistance Zones</div>
+    <div class="ana-grid" id="anaSR"></div>
+  </div>
+
+  <div class="card">
+    <div class="ana-row-title">Candlestick Pattern</div>
+    <div class="ana-grid" id="anaPattern"></div>
+  </div>
+
+  <div class="card">
+    <div class="ana-row-title">Multi-Timeframe Analysis</div>
+    <div class="mtf-row" id="anaMtfRow"></div>
+  </div>
+
+  <div class="disclaimer">This application provides educational and analytical information only. Trading cryptocurrency involves significant risk. Signals are probability-based and do not guarantee future results.</div>
+  </div><!-- /tab-page: analysis -->
 
 </main>
 
@@ -945,17 +1099,6 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
    XNX TRADING ANALYSIS — CONFIG
    ===================================================== */
 const REST = "https://api.binance.com";
-let ENTRY_TF = "15m";
-const CONTEXT_TFS = ["5m","1h","4h","1d"]; // + ENTRY_TF = full multi-timeframe stack
-const ALL_TF_ORDER = ["5m","15m","1h","4h","1d"];
-let allCoins = [];
-let currentSymbol = "BTCUSDT";
-let dataStatus = "CONNECTED"; // CONNECTED | DISCONNECTED
-let tradingLocked = false;
-let lastSignalCtx = null; // holds latest computed signal for paper trading / sizing
-let mtfCache = {}; // { tf: {trend, price, ts} }
-
-const QUICK = ["BTCUSDT","ETHUSDT","BNBUSDT","SOLUSDT","XRPUSDT","DOGEUSDT"];
 
 /* =====================================================
    LOCAL STORAGE STATE (client-side persistence only —
@@ -966,6 +1109,19 @@ const LS = {
   get(key, fallback){ try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; } },
   set(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
 };
+let appSettings = LS.get("xnx_settings", { defaultPair:"BTCUSDT", defaultTF:"15m", minConfidence:60, minRR:1.2, notifications:true });
+
+let ENTRY_TF = appSettings.defaultTF || "15m";
+const CONTEXT_TFS = ["5m","1h","4h","1d"]; // + ENTRY_TF = full multi-timeframe stack
+const ALL_TF_ORDER = ["5m","15m","1h","4h","1d"];
+let allCoins = [];
+let currentSymbol = appSettings.defaultPair || "BTCUSDT";
+let dataStatus = "CONNECTED"; // CONNECTED | DISCONNECTED
+let tradingLocked = false;
+let lastSignalCtx = null; // holds latest computed signal for paper trading / sizing
+let mtfCache = {}; // { tf: {trend, price, ts} }
+
+const QUICK = ["BTCUSDT","ETHUSDT","BNBUSDT","SOLUSDT","XRPUSDT","DOGEUSDT"];
 
 let watchlist = LS.get("xnx_watchlist", ["BTCUSDT","ETHUSDT"]);
 let alerts = LS.get("xnx_alerts", []);
@@ -981,6 +1137,7 @@ function saveAll(){
   LS.set("xnx_paper_account", paperAccount);
   LS.set("xnx_risk_state", riskState);
   LS.set("xnx_mode", currentMode);
+  LS.set("xnx_settings", appSettings);
 }
 
 function toast(msg){
@@ -2000,12 +2157,153 @@ function marketStructure(closes, highs, lows){
 }
 
 /* =====================================================
+   CANDLESTICK PATTERN DETECTION (section 7 of spec)
+   Patterns never trigger a signal alone — computeSignal()
+   only uses them as a small confirmation weight, and only
+   when they agree with the direction the rest of the
+   engine already favors.
+   ===================================================== */
+function detectCandlePatterns(opens, highs, lows, closes){
+  const n = closes.length;
+  if(n < 3) return [];
+  const o1=opens[n-1], h1=highs[n-1], l1=lows[n-1], c1=closes[n-1];
+  const o2=opens[n-2], h2=highs[n-2], l2=lows[n-2], c2=closes[n-2];
+  const o3=opens[n-3], c3=closes[n-3];
+
+  const body1 = Math.abs(c1-o1), range1 = Math.max(h1-l1, 1e-9);
+  const upperWick1 = h1 - Math.max(o1,c1), lowerWick1 = Math.min(o1,c1) - l1;
+  const bull1 = c1>o1, bear1 = c1<o1;
+  const body2 = Math.abs(c2-o2);
+  const bull2 = c2>o2, bear2 = c2<o2;
+  const body3 = Math.abs(c3-o3);
+
+  let patterns = [];
+
+  if(bear2 && bull1 && c1>=o2 && o1<=c2 && body1>body2*0.9)
+    patterns.push({name:"Bullish Engulfing", type:"bullish", strength:2});
+  if(bull2 && bear1 && c1<=o2 && o1>=c2 && body1>body2*0.9)
+    patterns.push({name:"Bearish Engulfing", type:"bearish", strength:2});
+
+  if(body1/range1 < 0.35 && lowerWick1 > body1*2 && upperWick1 < body1*0.7)
+    patterns.push({name:"Hammer / Bullish Pin Bar", type:"bullish", strength:1.2});
+  if(body1/range1 < 0.35 && upperWick1 > body1*2 && lowerWick1 < body1*0.7)
+    patterns.push({name:"Shooting Star / Bearish Pin Bar", type:"bearish", strength:1.2});
+
+  if(body1/range1 < 0.08)
+    patterns.push({name:"Doji", type:"neutral", strength:0.5});
+
+  const mid3 = (o3+c3)/2;
+  if(c3<o3 && body3>0 && body2 < body3*0.5 && bull1 && c1 > mid3)
+    patterns.push({name:"Morning Star", type:"bullish", strength:2.5});
+  if(c3>o3 && body3>0 && body2 < body3*0.5 && bear1 && c1 < mid3)
+    patterns.push({name:"Evening Star", type:"bearish", strength:2.5});
+
+  if(h1<h2 && l1>l2)
+    patterns.push({name:"Inside Bar", type:"neutral", strength:0.5});
+
+  patterns.sort((a,b)=>b.strength-a.strength);
+  return patterns;
+}
+
+/* =====================================================
+   BREAKOUT / FALSE-BREAKOUT ANALYSIS (section 8 of spec)
+   Builds on the swingHigh/swingLow + breakout/breakdown
+   flags already produced by marketStructure().
+   ===================================================== */
+function breakoutAnalysis(highs, lows, closes, volumes, ms){
+  const n = closes.length;
+  const volMAArr = sma(volumes,20);
+  const volMA = volMAArr[volMAArr.length-1];
+  const lastVol = volumes[n-1];
+  const volConfirmed = volMA ? lastVol > volMA*1.2 : false;
+
+  const result = { type:"none", volumeConfirmed:false, falseBreakout:false, warning:null };
+
+  if(ms.breakout){
+    result.type = "resistance_breakout";
+    result.volumeConfirmed = volConfirmed;
+    if(!volConfirmed) result.warning = "Resistance breakout hua hai lekin volume weak hai — false breakout ka risk, confirmation ka wait karein.";
+  } else if(ms.breakdown){
+    result.type = "support_breakdown";
+    result.volumeConfirmed = volConfirmed;
+    if(!volConfirmed) result.warning = "Support breakdown hua hai lekin volume weak hai — false breakdown ka risk, confirmation ka wait karein.";
+  }
+
+  // Look back a few candles for a breakout that already snapped back inside the range —
+  // a classic false-breakout / stop-hunt pattern.
+  const lookback = Math.min(6, n-1);
+  for(let i=n-lookback; i<n-1; i++){
+    if(i<=0) continue;
+    if(highs[i] > ms.swingHigh && closes[i] < ms.swingHigh){
+      result.falseBreakout = true;
+      result.warning = "Recent false breakout: price ne resistance cross kiya tha lekin wapas range ke andar close hua — trap ho sakta hai.";
+      break;
+    }
+    if(lows[i] < ms.swingLow && closes[i] > ms.swingLow){
+      result.falseBreakout = true;
+      result.warning = "Recent false breakdown: price ne support cross kiya tha lekin wapas range ke andar close hua — trap ho sakta hai.";
+      break;
+    }
+  }
+
+  return result;
+}
+
+/* =====================================================
+   CURRENT CANDLE LIVE ANALYSIS + NEXT CANDLE PROBABILITY
+   (sections 9 & "CURRENT CANDLE LIVE ANALYSIS" of spec)
+   Pure read of the still-forming candle + a probability
+   estimate — explicitly not a guaranteed prediction.
+   ===================================================== */
+function currentCandleAnalysis(opens, highs, lows, closes, volumes){
+  const n = closes.length;
+  const o=opens[n-1], h=highs[n-1], l=lows[n-1], c=closes[n-1];
+  const range = Math.max(h-l, 1e-9);
+  const buyPressure = Math.max(0, Math.min(100, Math.round(((c-l)/range)*100)));
+  const sellPressure = 100 - buyPressure;
+  const volMAArr = sma(volumes,20);
+  const volMA = volMAArr[volMAArr.length-1];
+  const volRatio = volMA ? volumes[n-1]/volMA : 1;
+  const volStrength = volRatio>1.4 ? "High" : volRatio>0.85 ? "Average" : "Low";
+  const candleType = Math.abs(c-o)/range < 0.08 ? "Neutral" : c>o ? "Bullish" : "Bearish";
+  return { candleType, buyPressure, sellPressure, volStrength, volRatio, avgVolume: volMA, currentVolume: volumes[n-1] };
+}
+
+function nextCandleProbability(score, dir, currentCandle){
+  let bullish = 50;
+  if(dir==="up") bullish = 50 + Math.min(40, score*0.42);
+  else if(dir==="down") bullish = 50 - Math.min(40, score*0.42);
+  bullish += (currentCandle.buyPressure - 50) * 0.15;
+  bullish = Math.max(5, Math.min(95, Math.round(bullish)));
+  return { bullish, bearish: 100 - bullish };
+}
+
+/* =====================================================
+   TRADE CONFIRMATION LEVELS (3-tier, spec section
+   "TRADE CONFIRMATION SYSTEM")
+   Stops the engine from calling a trade confirmed off
+   incomplete information — mirrors the same 5 major
+   scoring buckets so the label always agrees with the
+   score breakdown shown to the user.
+   ===================================================== */
+function confirmationLevel(result){
+  const majorCats = result.breakdown.slice(0,5); // Trend align, Structure, S/R, Volume, Momentum
+  const count = majorCats.filter(b => b[2]>0 && (b[1]/b[2]) >= 0.5).length;
+  let level, label;
+  if(result.signal==="BUY" || result.signal==="SELL"){ level=3; label="TRADE CONFIRMED"; }
+  else if(result.dir!=="flat" && count>=3){ level=2; label="CONFIRMATION BUILDING"; }
+  else if(result.dir!=="flat"){ level=1; label="POTENTIAL SETUP"; }
+  else { level=0; label="NO SETUP"; }
+  return { level, label, count, total: majorCats.length };
+}
+
+/* =====================================================
    SIGNAL / SCORING ENGINE (sections 9-14)
    ===================================================== */
 function computeSignal(ctx, mtf){
   mtf = mtf || mtfCache;
   const { closes, highs, lows, volumes, price, bid, ask } = ctx;
-  const e20 = ema(closes,20), e50 = ema(closes,50), e200 = closes.length>200?ema(closes,200):null;
+  const e9 = ema(closes,9), e20 = ema(closes,20), e50 = ema(closes,50), e200 = closes.length>200?ema(closes,200):null;
   const rsiArr = rsi(closes,14), lastRsi = rsiArr[rsiArr.length-1];
   const macdRes = macd(closes);
   const atrArr = atr(highs, lows, closes, 14), lastAtr = atrArr[atrArr.length-1];
@@ -2013,9 +2311,26 @@ function computeSignal(ctx, mtf){
   const volMA = sma(volumes,20);
   const lastVol = volumes[volumes.length-1], lastVolMA = volMA[volMA.length-1];
   const ms = marketStructure(closes, highs, lows);
+  const patterns = detectCandlePatterns(ctx.opens || [], highs, lows, closes);
+  const breakoutInfo = breakoutAnalysis(highs, lows, closes, volumes, ms);
 
   const entryTrend = trendOf(closes);
   const spreadPct = (bid && ask) ? ((ask-bid)/((ask+bid)/2))*100 : 0;
+
+  // Snapshot of raw indicator readouts for the dedicated AI Analysis page —
+  // section 3 (EMA) of the spec asks for EMA9/20/50/200 explicitly.
+  const macdBullNow = macdRes.line[macdRes.line.length-1] > macdRes.signal[macdRes.signal.length-1];
+  const indicators = {
+    ema9: e9[e9.length-1], ema20: e20[e20.length-1], ema50: e50[e50.length-1],
+    ema200: e200 ? e200[e200.length-1] : null,
+    priceAboveEma50: price > e50[e50.length-1],
+    priceAboveEma200: e200 ? price > e200[e200.length-1] : null,
+    rsi: lastRsi,
+    rsiState: lastRsi>=70 ? "Overbought" : lastRsi<=30 ? "Oversold" : lastRsi>50 ? "Bullish momentum" : "Bearish momentum",
+    macdLine: macdRes.line[macdRes.line.length-1], macdSignal: macdRes.signal[macdRes.signal.length-1],
+    macdCrossover: macdBullNow ? "Bullish crossover" : "Bearish crossover",
+    volume: lastVol, volumeMA: lastVolMA, volumeRatio: lastVolMA ? lastVol/lastVolMA : 1
+  };
 
   let reasons = [], score = 0, breakdown = [];
   const dir = entryTrend; // 'up' | 'down' | 'flat'
@@ -2088,32 +2403,63 @@ function computeSignal(ctx, mtf){
     invalidation = `Trade becomes invalid if price closes above ${formatPrice(sl)}.`;
   }
   let rrScore = 0;
-  if(rr >= 2) rrScore = 10; else if(rr >= 1.5) rrScore = 6; else if(rr>0) rrScore = 2;
-  score += rrScore; breakdown.push(["Risk/Reward", rrScore, 10]);
+  if(rr >= 2) rrScore = 8; else if(rr >= 1.5) rrScore = 5; else if(rr>0) rrScore = 2;
+  score += rrScore; breakdown.push(["Risk/Reward", rrScore, 8]);
   if(rr>0) reasons.push(`risk:reward on TP1 ≈ 1:${rr.toFixed(1)}`);
+
+  // --- Candlestick pattern confirmation (5 pts, section 7) ---
+  // Only counts when a detected pattern's direction agrees with `dir` —
+  // patterns never create a signal on their own, they only add confidence
+  // to a setup the rest of the engine already supports.
+  let patternScore = 0, topPattern = null;
+  const wantType = dir==="up" ? "bullish" : dir==="down" ? "bearish" : null;
+  if(wantType){
+    const agreeing = patterns.find(p => p.type === wantType);
+    if(agreeing){
+      topPattern = agreeing;
+      patternScore = Math.min(5, Math.round(agreeing.strength * 1.8));
+      reasons.push(`${agreeing.name} pattern confirms ${wantType} bias`);
+    }
+  }
+  if(!topPattern && patterns.length) topPattern = patterns[0]; // still show it, just no score
+  score += patternScore; breakdown.push(["Pattern", patternScore, 5]);
+
+  // False-breakout penalty — doesn't block the trade outright, but shaves
+  // confidence and always surfaces a visible warning (section 8 of spec).
+  if(breakoutInfo.falseBreakout){
+    score = Math.max(0, score - 8);
+    reasons.push("⚠ recent false breakout nearby — trade risk thoda zyada hai");
+  } else if((breakoutInfo.type==="resistance_breakout" || breakoutInfo.type==="support_breakdown") && !breakoutInfo.volumeConfirmed){
+    score = Math.max(0, score - 5);
+    reasons.push("⚠ breakout hua hai par volume weak — confirmation ka intezar behtar hoga");
+  }
 
   score = Math.min(100, Math.round(score));
 
   // --- Final gating: NO_TRADE conditions (section 17) ---
+  const minConf = (appSettings && appSettings.minConfidence) || 60;
+  const minRRSetting = (appSettings && appSettings.minRR) || 1.2;
   let signal = "NO_TRADE";
   let gateReasons = [];
-  if(dataStatus !== "CONNECTED"){ gateReasons.push("live data disconnected"); }
+  let noTradeType = null; // "data" | "quality" — drives INSUFFICIENT DATA vs WAIT messaging
+  if(dataStatus !== "CONNECTED"){ gateReasons.push("live data disconnected"); noTradeType = "data"; }
   if(!spreadOk){ gateReasons.push("spread abnormal"); }
   if(strongConflict){ gateReasons.push("timeframes strongly conflict"); }
-  if(rr < 1.2){ gateReasons.push("no 1:1.2+ risk/reward setup available"); }
+  if(rr < minRRSetting){ gateReasons.push(`no 1:${minRRSetting}+ risk/reward setup available`); }
   if(dir==="flat"){ gateReasons.push("entry-timeframe trend unclear"); }
+  if(!noTradeType && gateReasons.length) noTradeType = "quality";
 
-  if(gateReasons.length===0 && dir!=="flat" && score>=60){
+  if(gateReasons.length===0 && dir!=="flat" && score>=minConf){
     signal = dir==="up" ? "BUY" : "SELL";
-  } else if(gateReasons.length===0 && dir!=="flat" && score>=45){
+  } else if(gateReasons.length===0 && dir!=="flat" && score>=Math.max(30, minConf-15)){
     signal = "WAIT_FOR_ENTRY";
   } else {
     signal = "NO_TRADE";
     if(gateReasons.length) reasons.unshift("NO_TRADE: " + gateReasons.join(", "));
-    else reasons.unshift("Score below threshold — safest decision is NO_TRADE");
+    else { reasons.unshift("Score below threshold — safest decision is NO_TRADE"); noTradeType = "quality"; }
   }
 
-  return { signal, score, breakdown, entry, sl, tp1, tp2, tp3, rr, reasons, invalidation, price, dir, spreadPct, atr:lastAtr };
+  return { signal, score, breakdown, entry, sl, tp1, tp2, tp3, rr, reasons, invalidation, price, dir, spreadPct, atr:lastAtr, pattern: topPattern, breakout: breakoutInfo, indicators, structure: ms, patterns, noTradeType };
 }
 
 /* =====================================================
@@ -2138,15 +2484,22 @@ async function runAnalysis(){
 
     if(Object.keys(mtfCache).length===0){ mtfCache = await loadContextTimeframes(currentSymbol); }
 
-    const result = computeSignal({ closes: entryData.closes, highs: entryData.highs, lows: entryData.lows, volumes: entryData.volumes, price, bid, ask }, mtfCache);
+    const result = computeSignal({ opens: entryData.opens, closes: entryData.closes, highs: entryData.highs, lows: entryData.lows, volumes: entryData.volumes, price, bid, ask }, mtfCache);
+    const candleNow = currentCandleAnalysis(entryData.opens, entryData.highs, entryData.lows, entryData.closes, entryData.volumes);
+    const nextProb = nextCandleProbability(result.score, result.dir, candleNow);
+    const confLevel = confirmationLevel(result);
     lastSignalCtx = Object.assign({ symbol: currentSymbol }, result);
 
-    renderChart(entryData, result.signal!=="NO_TRADE" ? result.entry : null, result.signal!=="NO_TRADE" ? result.sl : null);
+    const tradableNow = result.signal!=="NO_TRADE";
+    renderChart(entryData, tradableNow ? result.entry : null, tradableNow ? result.sl : null, tradableNow ? result.tp1 : null, result.structure);
     renderSignal(result);
+    renderLiveCandle(candleNow, nextProb, confLevel);
+    renderAnalysisPage(result, candleNow);
     renderMtfRow(result.dir);
     renderPrice(price, allCoins.find(c=>c.symbol===currentSymbol)?.change ?? 0);
     logSignalHistory(result);
     checkPaperPositions(price);
+    checkSystemAlerts(result, candleNow);
     setDataStatus(true);
   }catch(e){
     setDataStatus(false);
@@ -2203,6 +2556,96 @@ function startPriceStream(sym){
   priceWs.onerror = ()=>{ try{ priceWs.close(); }catch(e){} };
 }
 
+/* =====================================================
+   LIVE CANDLE + NEXT-MOVE PROBABILITY RENDER
+   ===================================================== */
+function renderLiveCandle(candleNow, nextProb, confLevel){
+  const box = document.getElementById("liveCandleBox");
+  if(!box) return;
+  const typeCls = candleNow.candleType==="Bullish" ? "buy" : candleNow.candleType==="Bearish" ? "sell" : "";
+  document.getElementById("lcType").textContent = candleNow.candleType;
+  document.getElementById("lcType").className = "v " + typeCls;
+  document.getElementById("lcBuyFill").style.width = candleNow.buyPressure+"%";
+  document.getElementById("lcSellFill").style.width = candleNow.sellPressure+"%";
+  document.getElementById("lcBuyPct").textContent = candleNow.buyPressure+"%";
+  document.getElementById("lcSellPct").textContent = candleNow.sellPressure+"%";
+  document.getElementById("lcVolStrength").textContent = candleNow.volStrength + " (" + candleNow.volRatio.toFixed(2) + "x avg)";
+
+  document.getElementById("nextBullFill").style.width = nextProb.bullish+"%";
+  document.getElementById("nextBearFill").style.width = nextProb.bearish+"%";
+  document.getElementById("nextBullPct").textContent = nextProb.bullish+"%";
+  document.getElementById("nextBearPct").textContent = nextProb.bearish+"%";
+
+  const dots = document.getElementById("confDots");
+  dots.innerHTML = Array.from({length: confLevel.total}).map((_,i)=>
+    `<span class="conf-dot ${i<confLevel.count?'lit':''}"></span>`).join("");
+  const lvlEl = document.getElementById("confLevelLabel");
+  lvlEl.textContent = `LEVEL ${confLevel.level} · ${confLevel.label}`;
+  lvlEl.className = "conf-level-label lvl-"+confLevel.level;
+  document.getElementById("confLevelSub").textContent =
+    confLevel.level===3 ? "All key components confirmed — signal is live." :
+    confLevel.level===2 ? `${confLevel.count}/${confLevel.total} components confirming — wait for the rest before entering.` :
+    confLevel.level===1 ? "Direction forming but confirmation is thin — no trade yet." :
+    "No clear setup right now.";
+}
+
+/* =====================================================
+   AI ANALYSIS PAGE RENDER (dedicated detail page —
+   spec's "3. AI Analysis Page")
+   ===================================================== */
+function item(k,v,cls){ return `<div class="ana-item"><div class="k">${k}</div><div class="v ${cls||''}">${v}</div></div>`; }
+function renderAnalysisPage(r, candleNow){
+  const pairEl = document.getElementById("anaPairLabel");
+  if(!pairEl) return;
+  pairEl.textContent = `${currentSymbol.replace("USDT","/USDT")} · ${ENTRY_TF.toUpperCase()}`;
+
+  const dirCls = r.dir==="up"?"buy":r.dir==="down"?"sell":"";
+  document.getElementById("anaStructure").innerHTML =
+    item("Trend Direction", r.dir==="up"?"Bullish":r.dir==="down"?"Bearish":"Sideways", dirCls) +
+    item("Structure", r.structure.structureUp?"HH/HL (bullish)":r.structure.structureDown?"LH/LL (bearish)":"Mixed") +
+    item("Breakout", r.structure.breakout?"Resistance breakout":r.structure.breakdown?"Support breakdown":"None") +
+    item("Confirmation", `${confirmationLevel(r).count}/${confirmationLevel(r).total} components`);
+
+  const ind = r.indicators;
+  document.getElementById("anaEma").innerHTML =
+    item("EMA 9", formatPrice(ind.ema9)) + item("EMA 20", formatPrice(ind.ema20)) +
+    item("EMA 50", formatPrice(ind.ema50)) + item("EMA 200", ind.ema200?formatPrice(ind.ema200):"n/a (not enough candles)") +
+    item("Price vs EMA50", ind.priceAboveEma50?"Above (bullish)":"Below (bearish)", ind.priceAboveEma50?"buy":"sell") +
+    item("Price vs EMA200", ind.priceAboveEma200===null?"n/a":ind.priceAboveEma200?"Above (bullish)":"Below (bearish)", ind.priceAboveEma200?"buy":ind.priceAboveEma200===false?"sell":"");
+
+  document.getElementById("anaRsi").innerHTML =
+    item("RSI (14)", ind.rsi.toFixed(1)) + item("State", ind.rsiState, ind.rsiState.includes("Bullish")?"buy":ind.rsiState.includes("Bearish")?"sell":"");
+
+  document.getElementById("anaMacd").innerHTML =
+    item("MACD Line", ind.macdLine.toFixed(4)) + item("Signal Line", ind.macdSignal.toFixed(4)) +
+    item("Crossover", ind.macdCrossover, ind.macdCrossover.includes("Bullish")?"buy":"sell");
+
+  document.getElementById("anaVolume").innerHTML =
+    item("Current Volume", ind.volume.toLocaleString(undefined,{maximumFractionDigits:2})) +
+    item("20-period Avg", ind.volumeMA?ind.volumeMA.toLocaleString(undefined,{maximumFractionDigits:2}):"--") +
+    item("Ratio vs Avg", ind.volumeRatio.toFixed(2)+"x") +
+    item("Current Candle", candleNow.volStrength);
+
+  document.getElementById("anaSR").innerHTML =
+    item("Resistance Zone", formatPrice(r.structure.swingHigh*0.99)+" – "+formatPrice(r.structure.swingHigh*1.01)) +
+    item("Support Zone", formatPrice(r.structure.swingLow*0.99)+" – "+formatPrice(r.structure.swingLow*1.01)) +
+    item("Breakout Volume Confirmed", r.breakout.volumeConfirmed?"Yes":"No", r.breakout.volumeConfirmed?"buy":"") +
+    item("False Breakout Flag", r.breakout.falseBreakout?"⚠ Detected":"None", r.breakout.falseBreakout?"sell":"");
+
+  document.getElementById("anaPattern").innerHTML = r.pattern
+    ? item("Detected Pattern", r.pattern.name, r.pattern.type==="bullish"?"buy":r.pattern.type==="bearish"?"sell":"") +
+      item("Pattern Bias", r.pattern.type)
+    : item("Detected Pattern", "None on last candle") + item("Pattern Bias", "--");
+
+  const combined = Object.assign({}, mtfCache, { [ENTRY_TF]: { trend: r.dir } });
+  document.getElementById("anaMtfRow").innerHTML = ALL_TF_ORDER.map(tf=>{
+    const t = combined[tf] ? combined[tf].trend : "flat";
+    const cls = t==="up"?"up":t==="down"?"down":"flat";
+    const label = t==="up"?"BULL":t==="down"?"BEAR":"NEUTRAL";
+    return `<div class="mtf-pill ${cls}"><span class="lbl">${tf.toUpperCase()}</span>${label}</div>`;
+  }).join("");
+}
+
 function renderSignal(r){
   const card = document.getElementById("signalCard");
   const val = document.getElementById("signalValue");
@@ -2211,12 +2654,31 @@ function renderSignal(r){
 
   card.className = "signal-card " + (tradingLocked ? "locked" : cls);
   val.className = "signal-value " + (tradingLocked ? "locked" : cls);
-  val.textContent = tradingLocked ? "RISK_LOCKED" : r.signal.replace(/_/g," ");
+  const noTradeLabel = r.signal==="NO_TRADE" ? (r.noTradeType==="data" ? "INSUFFICIENT DATA" : "WAIT — NO HIGH QUALITY SETUP") : null;
+  val.textContent = tradingLocked ? "RISK_LOCKED" : (noTradeLabel || r.signal.replace(/_/g," "));
   fill.className = "conf-fill " + cls;
   fill.style.width = r.score+"%";
   document.getElementById("confScore").textContent = r.score + " / 100" + (r.score>=90?" · Very strong": r.score>=80?" · Strong": r.score>=60?" · Setup":" · Below threshold");
 
   document.getElementById("scoreBreakdown").innerHTML = r.breakdown.map(b=>`<span class="sb-chip">${b[0]} ${b[1]}/${b[2]}</span>`).join("");
+
+  const patternRow = document.getElementById("patternRow");
+  if(r.pattern){
+    patternRow.style.display = "block";
+    patternRow.innerHTML = `<span class="pattern-chip ${r.pattern.type}">🕯️ ${r.pattern.name}</span>`;
+  } else {
+    patternRow.style.display = "none";
+    patternRow.innerHTML = "";
+  }
+
+  const boWarn = document.getElementById("breakoutWarning");
+  if(r.breakout && r.breakout.warning){
+    boWarn.style.display = "block";
+    boWarn.textContent = "⚠ " + r.breakout.warning;
+  } else {
+    boWarn.style.display = "none";
+    boWarn.textContent = "";
+  }
 
   // mirror into the Analyze Setup card's "Final Result" box
   const setupResultText = document.getElementById("setupResultText");
@@ -2304,23 +2766,27 @@ function renderAdvisorNote(r, tradable){
   }
 }
 
-function renderChart(candles, entry, sl){
+let chartZoomN = 70;
+let lastChartData = null, lastChartEntry=null, lastChartSl=null, lastChartTp1=null, lastChartSR=null;
+
+function renderChart(candles, entry, sl, tp1, srZone){
   // candles = { opens, highs, lows, closes } — real OHLC candlestick chart, like Binance
+  lastChartData = candles; lastChartEntry = entry; lastChartSl = sl; lastChartTp1 = tp1; lastChartSR = srZone;
   const canvas = document.getElementById("chart");
   const ctx = canvas.getContext("2d");
   const w = canvas.width = canvas.clientWidth * 2;
   const h = canvas.height = 220 * 2;
   ctx.clearRect(0,0,w,h);
 
-  const N = 70; // how many recent candles fit comfortably on a phone screen
+  const N = chartZoomN; // how many recent candles to show — adjustable via zoom buttons
   const opens = candles.opens.slice(-N);
   const highs = candles.highs.slice(-N);
   const lows = candles.lows.slice(-N);
   const closes = candles.closes.slice(-N);
   const n = closes.length;
 
-  const min = Math.min(...lows, sl||Infinity, entry||Infinity);
-  const max = Math.max(...highs, sl||-Infinity, entry||-Infinity);
+  const min = Math.min(...lows, sl||Infinity, entry||Infinity, tp1||Infinity);
+  const max = Math.max(...highs, sl||-Infinity, entry||-Infinity, tp1||-Infinity);
   const pad = (max-min)*0.08 || max*0.01;
   const lo = min-pad, hi = max+pad;
 
@@ -2333,6 +2799,20 @@ function renderChart(candles, entry, sl){
   // grid
   ctx.strokeStyle = "#f0d3d5"; ctx.lineWidth = 1;
   for(let i=0;i<5;i++){ const gy = top + i*(bottom-top)/4; ctx.beginPath(); ctx.moveTo(left,gy); ctx.lineTo(right,gy); ctx.stroke(); }
+
+  // support / resistance zones (shaded bands, not exact single lines — spec section 8)
+  if(srZone){
+    if(srZone.swingHigh){
+      const zoneH = (max-min)*0.02;
+      ctx.fillStyle = "rgba(200,19,36,0.10)";
+      ctx.fillRect(left, y(srZone.swingHigh+zoneH), right-left, Math.max(2, y(srZone.swingHigh-zoneH)-y(srZone.swingHigh+zoneH)));
+    }
+    if(srZone.swingLow){
+      const zoneH = (max-min)*0.02;
+      ctx.fillStyle = "rgba(14,138,62,0.10)";
+      ctx.fillRect(left, y(srZone.swingLow+zoneH), right-left, Math.max(2, y(srZone.swingLow-zoneH)-y(srZone.swingLow+zoneH)));
+    }
+  }
 
   // candlesticks
   for(let i=0;i<n;i++){
@@ -2356,11 +2836,21 @@ function renderChart(candles, entry, sl){
     ctx.beginPath(); ctx.moveTo(left,y(entry)); ctx.lineTo(right,y(entry)); ctx.stroke();
   }
   if(sl){
-    ctx.strokeStyle="#8f0d1a";
+    ctx.setLineDash([]); ctx.strokeStyle="#8f0d1a";
     ctx.beginPath(); ctx.moveTo(left,y(sl)); ctx.lineTo(right,y(sl)); ctx.stroke();
+  }
+  if(tp1){
+    ctx.setLineDash([3,4]); ctx.strokeStyle="#0e8a3e"; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(left,y(tp1)); ctx.lineTo(right,y(tp1)); ctx.stroke();
   }
   ctx.setLineDash([]);
 }
+
+function chartZoom(delta){
+  chartZoomN = Math.max(30, Math.min(200, chartZoomN + delta));
+  if(lastChartData) renderChart(lastChartData, lastChartEntry, lastChartSl, lastChartTp1, lastChartSR);
+}
+window.chartZoom = chartZoom;
 
 /* =====================================================
    POSITION SIZE CALCULATOR (section 15)
@@ -2413,6 +2903,33 @@ function renderRisk(){
   document.getElementById("lockBanner").style.display = tradingLocked ? "block" : "none";
 }
 document.getElementById("resetDayBtn").onclick = ()=>{ riskState = { day:new Date().toDateString(), lossUsedPct:0, tradesToday:0 }; saveAll(); renderRisk(); toast("Daily risk counter reset"); };
+
+/* =====================================================
+   SETTINGS (default pair/TF, min confidence, min R:R,
+   notifications) — spec's "6. Settings" page.
+   ===================================================== */
+function loadSettingsForm(){
+  const el = id => document.getElementById(id);
+  if(!el("setDefaultPair")) return;
+  el("setDefaultPair").value = appSettings.defaultPair;
+  el("setDefaultTF").value = appSettings.defaultTF;
+  el("setMinConf").value = appSettings.minConfidence;
+  el("setMinRR").value = appSettings.minRR;
+  el("setNotifToggle").checked = !!appSettings.notifications;
+}
+document.getElementById("saveSettingsBtn")?.addEventListener("click", ()=>{
+  appSettings = {
+    defaultPair: document.getElementById("setDefaultPair").value,
+    defaultTF: document.getElementById("setDefaultTF").value,
+    minConfidence: Math.min(95, Math.max(30, parseFloat(document.getElementById("setMinConf").value) || 60)),
+    minRR: Math.min(5, Math.max(1, parseFloat(document.getElementById("setMinRR").value) || 1.2)),
+    notifications: document.getElementById("setNotifToggle").checked
+  };
+  saveAll();
+  if(appSettings.notifications && "Notification" in window && Notification.permission==="default") Notification.requestPermission();
+  toast("Settings saved — confidence/R:R apply immediately, default pair/TF on next open.");
+});
+loadSettingsForm();
 document.getElementById("rmDailyLoss").addEventListener("input", renderRisk);
 
 /* =====================================================
@@ -2480,6 +2997,9 @@ function closePaperPosition(id, reason){
     const dailyLimit = parseFloat(document.getElementById("rmDailyLoss").value)||3;
     const lossPct = Math.abs(pl)/paperAccount.startBalance*100;
     riskState.lossUsedPct += lossPct;
+  }
+  if(reason==="SL hit" || reason==="TP1 hit"){
+    notifyUser(`${p.symbol} paper trade ${reason} (P/L $${pl.toFixed(2)})`, `${p.symbol} ${p.side} position closed — ${reason}, P/L $${pl.toFixed(2)}.`);
   }
   saveAll(); renderRisk(); renderPaperAccount();
 }
@@ -2556,13 +3076,43 @@ function checkAlerts(){
     const hit = a.cond==="above" ? c.price>=a.price : c.price<=a.price;
     if(hit){
       a.triggered = true; changed = true;
-      toast(`ALERT: ${a.symbol} ${a.cond} ${formatPrice(a.price)}`);
-      if("Notification" in window && Notification.permission==="granted"){
-        new Notification("XNX Trading Alert", { body: `${a.symbol} is now ${a.cond} ${formatPrice(a.price)}` });
-      }
+      notifyUser(`${a.symbol} ${a.cond} ${formatPrice(a.price)}`, `${a.symbol} is now ${a.cond} ${formatPrice(a.price)}`);
     }
   });
   if(changed){ saveAll(); renderAlertTable(); }
+}
+
+// One shared notifier for all alert types (manual price alerts + the
+// automatic system alerts below) — respects the Settings notifications toggle.
+function notifyUser(toastMsg, notifBody){
+  toast("ALERT: " + toastMsg);
+  if(appSettings.notifications && "Notification" in window && Notification.permission==="granted"){
+    new Notification("XNX Trading Alert", { body: notifBody || toastMsg });
+  }
+}
+
+// Automatic alerts the app raises on its own, without the user configuring
+// a specific price target — covers spec's STRONG LONG/SHORT, breakout
+// detected, and high-volume-detected alert types.
+let lastAutoAlertKey = {};
+function checkSystemAlerts(result, candleNow){
+  const key = currentSymbol;
+  const prev = lastAutoAlertKey[key] || {};
+  const now = { strong:false, breakout:false, vol:false };
+
+  if(result.score>=80 && (result.signal==="BUY"||result.signal==="SELL")){
+    now.strong = true;
+    if(!prev.strong) notifyUser(`STRONG ${result.signal} on ${currentSymbol} (${result.score}/100)`, `Strong ${result.signal} setup on ${currentSymbol} — score ${result.score}/100.`);
+  }
+  if(result.breakout && (result.breakout.type==="resistance_breakout" || result.breakout.type==="support_breakdown")){
+    now.breakout = true;
+    if(!prev.breakout) notifyUser(`Breakout detected on ${currentSymbol}`, `${currentSymbol}: ${result.breakout.type.replace("_"," ")} detected.`);
+  }
+  if(candleNow.volStrength==="High"){
+    now.vol = true;
+    if(!prev.vol) notifyUser(`High volume on ${currentSymbol}`, `${currentSymbol} current candle volume is ${candleNow.volRatio.toFixed(1)}x the 20-period average.`);
+  }
+  lastAutoAlertKey[key] = now;
 }
 
 /* =====================================================
@@ -2570,20 +3120,79 @@ function checkAlerts(){
    ===================================================== */
 function logSignalHistory(r){
   const last = signalHistory[signalHistory.length-1];
-  if(last && last.symbol===r.symbol && last.signal===r.signal && (Date.now()-last.ts)<60000) return; // avoid spam duplicates
-  signalHistory.push({ ts: Date.now(), symbol: currentSymbol, signal: r.signal, score: r.score });
-  if(signalHistory.length>100) signalHistory = signalHistory.slice(-100);
+  if(last && last.symbol===currentSymbol && last.signal===r.signal && (Date.now()-last.ts)<60000) return; // avoid spam duplicates
+  const tradable = r.signal==="BUY" || r.signal==="SELL";
+  signalHistory.push({
+    id: Date.now()+"_"+Math.random().toString(36).slice(2,7),
+    ts: Date.now(), symbol: currentSymbol, tf: ENTRY_TF, signal: r.signal, score: r.score,
+    entry: tradable ? r.entry : null, sl: tradable ? r.sl : null,
+    tp1: tradable ? r.tp1 : null, rr: tradable ? r.rr : null,
+    result: tradable ? "OPEN" : "N/A"
+  });
+  if(signalHistory.length>150) signalHistory = signalHistory.slice(-150);
   saveAll(); renderHistoryTable();
 }
+
+// Resolve OPEN BUY/SELL entries against the latest known price for their
+// symbol: TP1 hit -> WIN, SL hit -> LOSS, 48h with neither -> EXPIRED.
+function checkSignalHistoryOutcomes(){
+  let changed = false;
+  const EXPIRE_MS = 1000*60*60*48;
+  signalHistory.forEach(h=>{
+    if(h.result !== "OPEN") return;
+    const cur = h.symbol===currentSymbol ? (lastSignalCtx && lastSignalCtx.price) : allCoins.find(c=>c.symbol===h.symbol)?.price;
+    if(cur){
+      if(h.signal==="BUY"){
+        if(cur<=h.sl){ h.result="LOSS"; changed=true; }
+        else if(cur>=h.tp1){ h.result="WIN"; changed=true; }
+      } else if(h.signal==="SELL"){
+        if(cur>=h.sl){ h.result="LOSS"; changed=true; }
+        else if(cur<=h.tp1){ h.result="WIN"; changed=true; }
+      }
+    }
+    if(h.result==="OPEN" && (Date.now()-h.ts) > EXPIRE_MS){ h.result="EXPIRED"; changed=true; }
+  });
+  if(changed){ saveAll(); renderHistoryTable(); }
+}
+function cancelSignalHistory(id){
+  const h = signalHistory.find(x=>x.id===id);
+  if(h && h.result==="OPEN"){ h.result="CANCELLED"; saveAll(); renderHistoryTable(); }
+}
+window.cancelSignalHistory = cancelSignalHistory;
+
+function renderHistoryStats(){
+  const statsEl = document.getElementById("historyStats");
+  if(!statsEl) return;
+  const resolved = signalHistory.filter(h=>h.result==="WIN"||h.result==="LOSS");
+  const wins = resolved.filter(h=>h.result==="WIN").length;
+  const losses = resolved.filter(h=>h.result==="LOSS").length;
+  const winRate = resolved.length ? Math.round((wins/resolved.length)*100) : 0;
+  const rrVals = signalHistory.filter(h=>h.rr).map(h=>h.rr);
+  const avgRR = rrVals.length ? (rrVals.reduce((a,b)=>a+b,0)/rrVals.length).toFixed(2) : "--";
+  const total = signalHistory.filter(h=>h.signal==="BUY"||h.signal==="SELL").length;
+  statsEl.innerHTML = `
+    <div class="hstat"><div class="k">Total Signals</div><div class="v">${total}</div></div>
+    <div class="hstat"><div class="k">Wins</div><div class="v" style="color:var(--green)">${wins}</div></div>
+    <div class="hstat"><div class="k">Losses</div><div class="v" style="color:var(--red)">${losses}</div></div>
+    <div class="hstat"><div class="k">Win Rate</div><div class="v">${winRate}%</div></div>
+    <div class="hstat"><div class="k">Avg R:R</div><div class="v">1:${avgRR}</div></div>`;
+}
+
 function renderHistoryTable(){
+  checkSignalHistoryOutcomes();
+  renderHistoryStats();
   const body = document.querySelector("#historyTable tbody");
-  const recent = signalHistory.slice(-10).reverse();
+  const recent = signalHistory.slice(-25).reverse();
+  const resultCls = { WIN:"buy", LOSS:"sell", CANCELLED:"", EXPIRED:"", OPEN:"", "N/A":"" };
   body.innerHTML = recent.length ? recent.map(h=>{
     const t = new Date(h.ts);
     const time = t.getHours().toString().padStart(2,"0")+":"+t.getMinutes().toString().padStart(2,"0");
     const cls = h.signal==="BUY"?"buy":h.signal==="SELL"?"sell":"";
-    return `<tr style="cursor:pointer;" onclick="selectSymbol('${h.symbol}')"><td>${time}</td><td>${h.symbol.replace("USDT","")}</td><td>${cls?`<span class="tag ${cls}">${h.signal}</span>`:h.signal.replace(/_/g," ")}</td><td>${h.score}</td></tr>`;
-  }).join("") : `<tr><td colspan="4" class="empty-row">No signals logged yet</td></tr>`;
+    const rc = resultCls[h.result] || "";
+    const resultBadge = rc ? `<span class="tag ${rc}">${h.result}</span>` : `<span class="tag">${h.result}</span>`;
+    const cancelBtn = h.result==="OPEN" ? `<button class="btn ghost" style="margin:0;padding:4px 7px;font-size:10px;" onclick="event.stopPropagation();cancelSignalHistory('${h.id}')">Cancel</button>` : "";
+    return `<tr style="cursor:pointer;" onclick="selectSymbol('${h.symbol}')"><td>${time}</td><td>${h.symbol.replace("USDT","")}</td><td>${cls?`<span class="tag ${cls}">${h.signal}</span>`:h.signal.replace(/_/g," ")}</td><td>${h.score}</td><td>${resultBadge}${cancelBtn}</td></tr>`;
+  }).join("") : `<tr><td colspan="5" class="empty-row">No signals logged yet</td></tr>`;
 }
 
 /* =====================================================
