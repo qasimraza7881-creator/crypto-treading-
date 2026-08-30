@@ -1227,6 +1227,28 @@ const FIREBASE_CONFIG = {
 const ADMIN_EMAIL = "qasimraza7881@gmail.com"; // this account is always admin & always has full free access
 const TRIAL_DAYS = 5;
 
+/* =====================================================
+   FREE EMAIL NOTIFICATIONS (via Google Apps Script)
+   ---------------------------------------------------
+   Paste the Web App URL you get after deploying the
+   Apps Script (see EMAIL_SETUP.txt) below. Until you do,
+   EMAIL_WEBHOOK_URL stays empty and email-sending is
+   silently skipped — nothing else in the app breaks.
+   ===================================================== */
+const EMAIL_WEBHOOK_URL = ""; // <-- paste your Apps Script /exec URL here
+
+function sendEmailNotification(to, subject, message){
+  if(!EMAIL_WEBHOOK_URL || !to) return; // not configured yet, or no address to send to
+  try{
+    fetch(EMAIL_WEBHOOK_URL, {
+      method: "POST",
+      mode: "no-cors", // Apps Script doesn't return CORS headers; fire-and-forget is fine here
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ to, subject, message })
+    });
+  }catch(e){ /* email is best-effort — never let it block or break the app */ }
+}
+
 const firebaseReady = FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf("PASTE_") !== 0;
 let fbApp = null, fbAuth = null, fbDb = null;
 let currentUser = null;      // firebase auth user object
@@ -1469,15 +1491,29 @@ document.getElementById("waPayBtn").addEventListener("click", ()=>{
   const phoneRaw = document.getElementById("payPhoneInput").value.trim().replace(/\D/g,"");
   if(!phoneRaw) return; // phone optional — nothing to log without it
   const plan = PLANS.find(p=>p.id===selectedPlan);
+  const buyerEmail = emailKey(currentUser.email);
   fbDb.collection("purchaseRequests").add({
     uid: currentUser.uid,
-    email: emailKey(currentUser.email),
+    email: buyerEmail,
     phone: phoneRaw,
     planId: plan ? plan.id : null,
     planLabel: plan ? plan.label : "Not selected",
     price: plan ? plan.price : null,
     status: "pending",
     createdAt: Date.now()
+  }).then(()=>{
+    // email #1 -> admin's Gmail, so you find out about every purchase request instantly
+    sendEmailNotification(
+      ADMIN_EMAIL,
+      "New purchase request — XNX Trading",
+      `Email: ${buyerEmail}\nPhone: ${phoneRaw}\nPlan: ${plan ? plan.label : "Not selected"}\nPrice: ${plan ? plan.price : "--"}\nTime: ${new Date().toLocaleString()}`
+    );
+    // email #2 -> the buyer's own Gmail, confirming we received their request
+    sendEmailNotification(
+      buyerEmail,
+      "We received your purchase request — XNX Trading",
+      `Thanks! We've received your request for the ${plan ? plan.label : "selected"} plan. Our team will activate your access shortly and message you on WhatsApp.`
+    );
   }).catch(()=>{}); // silent fail — WhatsApp message stays the source of truth if this fails
 });
 
@@ -3088,6 +3124,11 @@ function notifyUser(toastMsg, notifBody){
   toast("ALERT: " + toastMsg);
   if(appSettings.notifications && "Notification" in window && Notification.permission==="granted"){
     new Notification("XNX Trading Alert", { body: notifBody || toastMsg });
+  }
+  // every notification also goes to the signed-in user's own Gmail, so they
+  // get it even if the app/tab isn't open. Respects the same Settings toggle.
+  if(appSettings.notifications && currentUser && currentUser.email){
+    sendEmailNotification(emailKey(currentUser.email), "XNX Trading Alert: " + toastMsg, notifBody || toastMsg);
   }
 }
 
