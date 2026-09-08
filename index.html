@@ -543,41 +543,40 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
 .nav-btn .nav-dot{ width:4px; height:4px; border-radius:50%; background:var(--red); margin-top:1px; opacity:0; }
   .nav-btn.active .nav-dot{ opacity:1; }
 
-  /* Trust-first dark fintech refresh */
+  /* 2026 institutional market terminal visual system */
   :root{
-    --bg:#0b0e12; --surface:#11161d; --surface-2:#171d25;
-    --ink:#edf2f7; --ink-soft:#8e9aa8;
-    --red:#ff5d67; --red-deep:#d94450; --red-line:#293440;
-    --green:#32d583; --green-soft:#10251e; --red-soft:#2a171b;
-    --amber:#f4b84a; --amber-soft:#2a2111;
+    --bg:#090b0e; --surface:#101419; --surface-2:#161b21; --surface-3:#1c232b;
+    --ink:#f1f4f7; --ink-soft:#8b98a6; --muted:#65717d;
+    --red:#e0525c; --red-deep:#a93640; --red-line:#27313a;
+    --green:#42c78a; --green-soft:#10231c; --red-soft:#271518;
+    --amber:#d5a24b; --amber-soft:#241d12; --blue:#7da8d8;
   }
   html,body{background:var(--bg);color:var(--ink);}
-  .ticker-wrap{background:#10161d;border-bottom-color:#26313d;box-shadow:none;}
-  .ticker-track{color:#b9c5d2;}
-  header{padding-top:26px;}
-  .eyebrow{color:var(--green);}
-  h1{letter-spacing:-.03em;}
-  .mode-btn,.ptab,.tf-chip,.level-box,.reason,.sb-chip,.mtf-pill,.search-wrap input,.coin-dropdown{background:var(--surface);border-color:var(--red-line);color:var(--ink);}
-  .mode-btn.active{background:var(--red);border-color:var(--red);color:#fff;}
-  .ptab.active{background:var(--ink);color:var(--bg);border-color:var(--ink);}
-  .card,.setup-card,.signal-card{background:var(--surface);border-color:var(--red-line);box-shadow:0 14px 34px rgba(0,0,0,.16);}
-  .signal-card.buy{background:var(--green-soft);border-color:#235f47;}.signal-card.sell{background:var(--red-soft);border-color:#703039;}.signal-card.none{background:var(--surface-2);}
-  .level-box,.reason{background:var(--surface-2);}.disclaimer{color:#84919f;}
-  .risk-review{background:linear-gradient(135deg,#121b21,#11161d);border:1px solid #33404b;border-radius:20px;padding:18px;margin:18px 0;}
-  .risk-review-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px;}
-  .risk-review-title{font-family:'Fraunces',serif;font-size:20px;font-weight:600;}.risk-review-kicker{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:var(--amber);text-transform:uppercase;margin-bottom:5px;}
-  .risk-badge{font:600 10px 'IBM Plex Mono',monospace;color:var(--amber);border:1px solid #7a5c28;border-radius:999px;padding:6px 8px;white-space:nowrap;}
-  .risk-review p{font-size:13px;line-height:1.55;color:var(--ink-soft);margin:0 0 12px;}.risk-review strong{color:var(--ink);}
-  .risk-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;}.risk-item{background:var(--surface-2);border:1px solid var(--red-line);border-radius:12px;padding:11px;font-size:12px;line-height:1.45;color:var(--ink-soft);}.risk-item b{display:block;color:var(--ink);font-size:11px;margin-bottom:4px;}
-  .risk-links{display:flex;flex-wrap:wrap;gap:8px;}.risk-links a{color:#8fc7ff;font:500 11px 'IBM Plex Mono',monospace;text-decoration:none;border-bottom:1px solid #385f86;padding-bottom:2px;}
-  @media(max-width:420px){.risk-grid{grid-template-columns:1fr;}.risk-review{padding:15px;}.risk-review-head{display:block}.risk-badge{display:inline-block;margin-top:9px;}}
-  .vip-command-card{background:var(--surface-2);border:1px solid #6b5522;border-radius:16px;padding:15px;margin-top:14px;}
-  .vip-command-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;}
-  .vip-feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-  .vip-feature{border:1px solid var(--red-line);background:var(--surface);border-radius:11px;padding:10px;display:flex;flex-direction:column;gap:4px;min-width:0;}
-  .vip-feature b{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--ink);}.vip-feature span{font-size:11px;line-height:1.35;color:var(--ink-soft);}.vip-feature em{font:600 9px 'IBM Plex Mono',monospace;font-style:normal;margin-top:2px;}.status-live{color:var(--green);}.status-ready{color:var(--amber);}.status-safe{color:#9aa7b5;}  .vip-trust-note{font-size:11px;line-height:1.5;color:var(--ink-soft);margin-top:11px;padding-top:10px;border-top:1px solid var(--red-line);}
-  .trade-timing{margin:12px 0 16px;padding:12px 13px;border:1px solid #645126;border-radius:13px;background:var(--amber-soft);}.trade-timing[data-state="trade"]{background:var(--green-soft);border-color:#235f47}.trade-timing[data-state="avoid"]{background:var(--red-soft);border-color:#703039}.trade-timing-kicker{font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);}.trade-timing[data-state="trade"] .trade-timing-kicker{color:var(--green)}.trade-timing[data-state="avoid"] .trade-timing-kicker{color:var(--red)}.trade-timing-title{font:700 17px 'Fraunces',serif;margin:3px 0 4px}.trade-timing-copy{font-size:12px;line-height:1.45;color:var(--ink-soft)}.trade-timing-rules{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.trade-timing-rules span{font:500 9px 'IBM Plex Mono',monospace;border:1px solid var(--red-line);border-radius:999px;padding:4px 6px;color:var(--ink-soft);background:var(--surface)}
-  @media(max-width:420px){.vip-command-head{display:block}.vip-command-head .risk-badge{margin-top:8px}.vip-feature-grid{grid-template-columns:1fr;}}
+  body{font-size:14px;letter-spacing:.002em;}
+  .ticker-wrap{height:30px;background:#0d1115;border-bottom:1px solid #202930;box-shadow:none;}
+  .ticker-track{color:#aeb9c4;font-size:11px;}
+  header{max-width:1180px;margin:0 auto;padding:32px 28px 14px;}
+  .eyebrow{color:var(--green);font-size:10px;letter-spacing:.16em;}
+  h1{font-family:'Inter',sans-serif;font-size:36px;font-weight:700;letter-spacing:-.055em;margin:9px 0 5px;}
+  .sub{font-size:13px;color:var(--ink-soft);max-width:680px;line-height:1.55;}
+  main{max-width:1180px;padding:0 28px 72px;}
+  .mode-row{border-bottom:1px solid var(--red-line);padding-bottom:12px;margin-bottom:16px;gap:6px;}
+  .mode-btn{border:0;border-radius:7px;background:transparent;color:var(--ink-soft);padding:9px 12px;font-size:10px;letter-spacing:.08em;}
+  .mode-btn.active{background:var(--surface-3);color:var(--ink);border:1px solid #36424d;}
+  .provider-tabs{display:flex;gap:8px;margin-bottom:16px;}.ptab{border-radius:6px;padding:8px 11px;font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.02em;}.ptab.active{background:var(--ink);color:var(--bg);}
+  .setup-card,.card,.signal-card,.auth-card,.member-card{border-radius:10px;background:var(--surface);border:1px solid var(--red-line);box-shadow:none;}
+  .setup-card{padding:18px;}.card,.signal-card,.auth-card,.member-card{padding:16px;}
+  .engine-title{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.15em;color:#9eabb7;text-transform:uppercase;margin:22px 0 9px;}
+  .risk-review{background:var(--surface);border:1px solid #39444d;border-radius:10px;padding:18px;margin:14px 0 20px;}.risk-review-title{font-family:'Inter',sans-serif;font-size:18px;font-weight:650;}.risk-review-kicker{font-size:9px;letter-spacing:.15em;color:var(--amber);}.risk-grid{gap:8px}.risk-item{border-radius:7px;background:var(--surface-2);border-color:var(--red-line);}.risk-links a{color:var(--blue);}
+  .vip-command-card{background:#14171a;border:1px solid #6a5429;border-radius:9px;}.vip-feature{border-radius:7px;background:var(--surface);}.trade-timing{border-radius:8px;}.trade-timing-title{font-family:'Inter',sans-serif;font-size:15px;}
+  .level-box,.reason,.sb-chip,.mtf-pill,.search-wrap input,.coin-dropdown{background:var(--surface-2);border-color:var(--red-line);color:var(--ink);border-radius:7px;}.level-box .k,.out-box .k{font-size:9px;letter-spacing:.1em;color:var(--muted);}.level-box .v{font-size:14px;}
+  .btn{border-radius:7px;background:var(--red-deep);border-color:var(--red);font-size:11px;letter-spacing:.04em;}.btn.secondary,.btn.ghost{background:var(--surface-3);border-color:#36424d;color:var(--ink);}.fav-btn{border-radius:7px;background:var(--surface-3);border-color:#36424d;}
+  .status-pill,.live-badge{border-radius:5px;font-size:9px;letter-spacing:.08em;}.chart-zoom-row{opacity:.8;}
+  .tab-page[data-page="home"]{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(340px,.9fr);gap:0 18px;}.tab-page[data-page="home"] > .provider-tabs,.tab-page[data-page="home"] > .risk-review,.tab-page[data-page="home"] > .engine-title:first-of-type,.tab-page[data-page="home"] > .setup-card,.tab-page[data-page="home"] > .coin-list,.tab-page[data-page="home"] > .buyopp-card,.tab-page[data-page="home"] > .sellopp-card,.tab-page[data-page="home"] > .disclaimer{grid-column:1 / -1;}.tab-page[data-page="home"] > .card,.tab-page[data-page="home"] > .signal-card{grid-column:auto;align-self:start;}.tab-page[data-page="home"] > .engine-title:not(:first-of-type){grid-column:1 / -1;}
+  .bottom-nav{background:#0d1115;border-top:1px solid #26313a;box-shadow:0 -8px 22px rgba(0,0,0,.2);}.nav-btn{color:#71808d;border-radius:6px;font-size:9px;}.nav-btn .nav-ico{font-size:16px;}.nav-btn.active{color:var(--ink);background:var(--surface-2);}.nav-btn .nav-dot{background:var(--red);}
+  @media(min-width:781px){.bottom-nav{position:sticky;bottom:16px;max-width:620px;margin:10px auto 14px;border:1px solid var(--red-line);border-radius:9px;}.nav-btn{padding:8px 4px;}}
+  @media(max-width:780px){header{padding:24px 16px 12px}main{padding:0 16px 58px}.tab-page[data-page="home"]{display:block}.tab-page[data-page="home"] > .card,.tab-page[data-page="home"] > .signal-card{margin-top:12px}h1{font-size:30px}.risk-grid{grid-template-columns:1fr 1fr;}}
+  @media(max-width:420px){.risk-grid,.vip-feature-grid{grid-template-columns:1fr}.risk-review-head,.vip-command-head{display:block}.risk-badge{display:inline-block;margin-top:8px}.risk-review{padding:15px}}
 </style>
 </head>
 <body>
@@ -585,9 +584,9 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
 <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack">Loading live prices…</div></div>
 
 <header style="position:relative;">
-  <div class="eyebrow"><span id="dataStatusText">DATA_STATUS: CONNECTING</span></div>
-  <h1>XNX Trading Analysis</h1>
-  <p class="sub">Multi-timeframe decision engine on live Binance market data. Analysis only — you decide, you execute. NO_TRADE is a valid result.</p>
+  <div class="eyebrow"><span id="dataStatusText">MARKET INTELLIGENCE / LIVE FEED</span><span style="color:var(--muted)">·</span><span style="color:var(--muted)">TERMINAL 01</span></div>
+  <h1>XNX / Market Intelligence</h1>
+  <p class="sub">A rules-based crypto research terminal for live context, entry discipline, portfolio risk, and paper execution. Analysis only — no automatic real-money orders.</p>
 </header>
 
 <main>
@@ -618,7 +617,7 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
     <div class="risk-links"><a href="https://apps.apple.com/app/id143679997" target="_blank" rel="noopener noreferrer">Review App Store listing</a><a href="https://1exness.global" target="_blank" rel="noopener noreferrer">Open supplied domain cautiously</a></div>
   </section>
 
-  <div class="engine-title">Analyze Setup</div>
+  <div class="engine-title">Research workspace</div>
 
   <div class="setup-card">
     <div class="setup-kicker">CURRENT SETUP</div>
@@ -677,7 +676,7 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
 
   <div class="coin-list" id="quickCoins"></div>
 
-  <div class="engine-title">🟢 Buy Opportunities <span style="font-size:11px; color:var(--ink-soft); font-weight:400; font-family:'IBM Plex Mono',monospace;">— jo coins abhi buy criteria pura kar rahe hain</span></div>
+  <div class="engine-title">Long-side opportunity scan <span style="font-size:11px; color:var(--ink-soft); font-weight:400; font-family:'IBM Plex Mono',monospace;">— setups meeting the current ruleset</span></div>
   <div class="card buyopp-card" id="buyOppCard">
     <div class="buyopp-allrow">
       <div>
@@ -697,7 +696,7 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
     <div class="disclaimer" style="margin-top:10px;" id="buyOppDisclaimer">Yeh sirf woh coins hain jinka score abhi BUY threshold cross kar raha hai (watchlist + top 15 sabse zyada volume/use wale coins, current entry timeframe pe). Yeh guarantee nahi hai — khud confirm karke hi trade karein.</div>
   </div>
 
-  <div class="engine-title">🔴 Sell Opportunities <span style="font-size:11px; color:var(--ink-soft); font-weight:400; font-family:'IBM Plex Mono',monospace;">— jo coins abhi sell criteria pura kar rahe hain</span></div>
+  <div class="engine-title">Short-side opportunity scan <span style="font-size:11px; color:var(--ink-soft); font-weight:400; font-family:'IBM Plex Mono',monospace;">— setups meeting the current ruleset</span></div>
   <div class="card sellopp-card" id="sellOppCard">
     <div class="buyopp-allrow">
       <div>
@@ -767,7 +766,7 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
     <div class="sub" id="confLevelSub" style="margin-top:4px;">--</div>
   </div>
 
-  <div class="engine-title">Decision Engine</div>
+  <div class="engine-title">Decision engine / action gate</div>
   <div class="signal-card none" id="signalCard">
   <div class="signal-label">Current Signal</div>
   <div class="signal-value none" id="signalValue">ANALYZING…</div>
