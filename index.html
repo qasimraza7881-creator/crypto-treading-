@@ -571,6 +571,12 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
   .risk-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;}.risk-item{background:var(--surface-2);border:1px solid var(--red-line);border-radius:12px;padding:11px;font-size:12px;line-height:1.45;color:var(--ink-soft);}.risk-item b{display:block;color:var(--ink);font-size:11px;margin-bottom:4px;}
   .risk-links{display:flex;flex-wrap:wrap;gap:8px;}.risk-links a{color:#8fc7ff;font:500 11px 'IBM Plex Mono',monospace;text-decoration:none;border-bottom:1px solid #385f86;padding-bottom:2px;}
   @media(max-width:420px){.risk-grid{grid-template-columns:1fr;}.risk-review{padding:15px;}.risk-review-head{display:block}.risk-badge{display:inline-block;margin-top:9px;}}
+  .vip-command-card{background:var(--surface-2);border:1px solid #6b5522;border-radius:16px;padding:15px;margin-top:14px;}
+  .vip-command-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;}
+  .vip-feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .vip-feature{border:1px solid var(--red-line);background:var(--surface);border-radius:11px;padding:10px;display:flex;flex-direction:column;gap:4px;min-width:0;}
+  .vip-feature b{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--ink);}.vip-feature span{font-size:11px;line-height:1.35;color:var(--ink-soft);}.vip-feature em{font:600 9px 'IBM Plex Mono',monospace;font-style:normal;margin-top:2px;}.status-live{color:var(--green);}.status-ready{color:var(--amber);}.status-safe{color:#9aa7b5;}.vip-trust-note{font-size:11px;line-height:1.5;color:var(--ink-soft);margin-top:11px;padding-top:10px;border-top:1px solid var(--red-line);}
+  @media(max-width:420px){.vip-command-head{display:block}.vip-command-head .risk-badge{margin-top:8px}.vip-feature-grid{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -932,6 +938,18 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
       <button class="btn" id="trialBtn" type="button" style="margin-top:10px;">Start Free Trial</button>
     </div>
     <div class="plan-grid" id="planGrid"></div>
+
+    <div class="vip-command-card" aria-labelledby="vipCommandTitle">
+      <div class="risk-review-kicker">VIP workspace</div>
+      <div class="vip-command-head"><div class="risk-review-title" id="vipCommandTitle">Your premium command center</div><span class="risk-badge">LOCKED UNTIL ACTIVE</span></div>
+      <div class="vip-feature-grid">
+        <div class="vip-feature"><b>LIVE DATA</b><span>Binance candles, price and volume</span><em class="status-live">CONNECTED</em></div>
+        <div class="vip-feature"><b>PORTFOLIO</b><span>Paper positions, P&amp;L and trade history</span><em class="status-ready">READY</em></div>
+        <div class="vip-feature"><b>ALERTS</b><span>Watchlist, price alerts and overnight scan</span><em class="status-ready">READY</em></div>
+        <div class="vip-feature"><b>EXECUTION</b><span>Analysis only — no automatic real-money orders</span><em class="status-safe">DISABLED</em></div>
+      </div>
+      <div class="vip-trust-note">VIP unlocks the workspace tools; it does not guarantee profit or turn analysis into financial advice. Your own risk limit always comes first.</div>
+    </div>
 
     <div class="pay-box">
       <div class="pay-title">PAYMENT DETAILS — pay manually, then message screenshot to get access</div>
