@@ -541,7 +541,42 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
 .nav-btn.active .nav-ico{ filter:none; opacity:1; transform:scale(1.08); }
 .nav-btn:active{ transform:scale(.94); }
 .nav-btn .nav-dot{ width:4px; height:4px; border-radius:50%; background:var(--red); margin-top:1px; opacity:0; }
-.nav-btn.active .nav-dot{ opacity:1; }
+  .nav-btn.active .nav-dot{ opacity:1; }
+
+  /* 2026 institutional market terminal visual system */
+  :root{
+    --bg:#090b0e; --surface:#101419; --surface-2:#161b21; --surface-3:#1c232b;
+    --ink:#f1f4f7; --ink-soft:#8b98a6; --muted:#65717d;
+    --red:#e0525c; --red-deep:#a93640; --red-line:#27313a;
+    --green:#42c78a; --green-soft:#10231c; --red-soft:#271518;
+    --amber:#d5a24b; --amber-soft:#241d12; --blue:#7da8d8;
+  }
+  html,body{background:var(--bg);color:var(--ink);}
+  body{font-size:14px;letter-spacing:.002em;}
+  .ticker-wrap{height:30px;background:#0d1115;border-bottom:1px solid #202930;box-shadow:none;}
+  .ticker-track{color:#aeb9c4;font-size:11px;}
+  header{max-width:1180px;margin:0 auto;padding:32px 28px 14px;}
+  .eyebrow{color:var(--green);font-size:10px;letter-spacing:.16em;}
+  h1{font-family:'Inter',sans-serif;font-size:36px;font-weight:700;letter-spacing:-.055em;margin:9px 0 5px;}
+  .sub{font-size:13px;color:var(--ink-soft);max-width:680px;line-height:1.55;}
+  main{max-width:1180px;padding:0 28px 72px;}
+  .mode-row{border-bottom:1px solid var(--red-line);padding-bottom:12px;margin-bottom:16px;gap:6px;}
+  .mode-btn{border:0;border-radius:7px;background:transparent;color:var(--ink-soft);padding:9px 12px;font-size:10px;letter-spacing:.08em;}
+  .mode-btn.active{background:var(--surface-3);color:var(--ink);border:1px solid #36424d;}
+  .provider-tabs{display:flex;gap:8px;margin-bottom:16px;}.ptab{border-radius:6px;padding:8px 11px;font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.02em;}.ptab.active{background:var(--ink);color:var(--bg);}
+  .setup-card,.card,.signal-card,.auth-card,.member-card{border-radius:10px;background:var(--surface);border:1px solid var(--red-line);box-shadow:none;}
+  .setup-card{padding:18px;}.card,.signal-card,.auth-card,.member-card{padding:16px;}
+  .engine-title{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.15em;color:#9eabb7;text-transform:uppercase;margin:22px 0 9px;}
+  .risk-review{background:var(--surface);border:1px solid #39444d;border-radius:10px;padding:18px;margin:14px 0 20px;}.risk-review-title{font-family:'Inter',sans-serif;font-size:18px;font-weight:650;}.risk-review-kicker{font-size:9px;letter-spacing:.15em;color:var(--amber);}.risk-grid{gap:8px}.risk-item{border-radius:7px;background:var(--surface-2);border-color:var(--red-line);}.risk-links a{color:var(--blue);}
+  .vip-command-card{background:#14171a;border:1px solid #6a5429;border-radius:9px;}.vip-feature{border-radius:7px;background:var(--surface);}.trade-timing{border-radius:8px;}.trade-timing-title{font-family:'Inter',sans-serif;font-size:15px;}
+  .level-box,.reason,.sb-chip,.mtf-pill,.search-wrap input,.coin-dropdown{background:var(--surface-2);border-color:var(--red-line);color:var(--ink);border-radius:7px;}.level-box .k,.out-box .k{font-size:9px;letter-spacing:.1em;color:var(--muted);}.level-box .v{font-size:14px;}
+  .btn{border-radius:7px;background:var(--red-deep);border-color:var(--red);font-size:11px;letter-spacing:.04em;}.btn.secondary,.btn.ghost{background:var(--surface-3);border-color:#36424d;color:var(--ink);}.fav-btn{border-radius:7px;background:var(--surface-3);border-color:#36424d;}
+  .status-pill,.live-badge{border-radius:5px;font-size:9px;letter-spacing:.08em;}.chart-zoom-row{opacity:.8;}
+  .tab-page[data-page="home"]{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(340px,.9fr);gap:0 18px;}.tab-page[data-page="home"] > .provider-tabs,.tab-page[data-page="home"] > .risk-review,.tab-page[data-page="home"] > .engine-title:first-of-type,.tab-page[data-page="home"] > .setup-card,.tab-page[data-page="home"] > .coin-list,.tab-page[data-page="home"] > .buyopp-card,.tab-page[data-page="home"] > .sellopp-card,.tab-page[data-page="home"] > .disclaimer{grid-column:1 / -1;}.tab-page[data-page="home"] > .card,.tab-page[data-page="home"] > .signal-card{grid-column:auto;align-self:start;}.tab-page[data-page="home"] > .engine-title:not(:first-of-type){grid-column:1 / -1;}
+  .bottom-nav{background:#0d1115;border-top:1px solid #26313a;box-shadow:0 -8px 22px rgba(0,0,0,.2);}.nav-btn{color:#71808d;border-radius:6px;font-size:9px;}.nav-btn .nav-ico{font-size:16px;}.nav-btn.active{color:var(--ink);background:var(--surface-2);}.nav-btn .nav-dot{background:var(--red);}
+  @media(min-width:781px){.bottom-nav{position:sticky;bottom:16px;max-width:620px;margin:10px auto 14px;border:1px solid var(--red-line);border-radius:9px;}.nav-btn{padding:8px 4px;}}
+  @media(max-width:780px){header{padding:24px 16px 12px}main{padding:0 16px 58px}.tab-page[data-page="home"]{display:block}.tab-page[data-page="home"] > .card,.tab-page[data-page="home"] > .signal-card{margin-top:12px}h1{font-size:30px}.risk-grid{grid-template-columns:1fr 1fr;}}
+  @media(max-width:420px){.risk-grid,.vip-feature-grid{grid-template-columns:1fr}.risk-review-head,.vip-command-head{display:block}.risk-badge{display:inline-block;margin-top:8px}.risk-review{padding:15px}}
 </style>
 </head>
 <body>
@@ -549,9 +584,9 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
 <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack">Loading live prices…</div></div>
 
 <header style="position:relative;">
-  <div class="eyebrow"><span id="dataStatusText">DATA_STATUS: CONNECTING</span></div>
-  <h1>XNX Trading Analysis</h1>
-  <p class="sub">Multi-timeframe decision engine on live Binance market data. Analysis only — you decide, you execute. NO_TRADE is a valid result.</p>
+  <div class="eyebrow"><span id="dataStatusText">MARKET INTELLIGENCE / LIVE FEED</span><span style="color:var(--muted)">·</span><span style="color:var(--muted)">TERMINAL 01</span></div>
+  <h1>XNX / Market Intelligence</h1>
+  <p class="sub">A rules-based crypto research terminal for live context, entry discipline, portfolio risk, and paper execution. Analysis only — no automatic real-money orders.</p>
 </header>
 
 <main>
@@ -567,7 +602,22 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
     <div class="ptab disabled" id="tabForex" title="Needs a licensed forex data provider + API key. Not connected — no fake prices will be shown.">Forex/Metals · not connected</div>
   </div>
 
-  <div class="engine-title">Analyze Setup</div>
+  <section class="risk-review" aria-labelledby="riskReviewTitle">
+    <div class="risk-review-head">
+      <div><div class="risk-review-kicker">Safety check · before you trade</div><div class="risk-review-title" id="riskReviewTitle">Exness link review</div></div>
+      <span class="risk-badge">HIGH CAUTION</span>
+    </div>
+    <p><strong>Result:</strong> the supplied links are not enough to prove an official broker or a safe account. Treat <strong>1exness.global</strong> as unverified; do not deposit, share OTPs, or upload identity documents until you confirm the domain independently.</p>
+    <div class="risk-grid">
+      <div class="risk-item"><b>DOMAIN</b>Look for the exact official Exness domain and valid HTTPS certificate. Similar-looking domains can be impersonation sites.</div>
+      <div class="risk-item"><b>PAYMENTS</b>Never pay a “tax”, “unlock”, or “withdrawal fee” to release funds. Contact your bank/card provider if you already paid.</div>
+      <div class="risk-item"><b>CHAT EVIDENCE</b>Save the full chat, usernames, wallet addresses, receipts, and timestamps. Do not delete messages.</div>
+      <div class="risk-item"><b>TRADING RESULT</b>This dashboard reports evidence-based scenarios only. No tool can guarantee that price will go up or down.</div>
+    </div>
+    <div class="risk-links"><a href="https://apps.apple.com/app/id143679997" target="_blank" rel="noopener noreferrer">Review App Store listing</a><a href="https://1exness.global" target="_blank" rel="noopener noreferrer">Open supplied domain cautiously</a></div>
+  </section>
+
+  <div class="engine-title">Research workspace</div>
 
   <div class="setup-card">
     <div class="setup-kicker">CURRENT SETUP</div>
@@ -626,7 +676,7 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
 
   <div class="coin-list" id="quickCoins"></div>
 
-  <div class="engine-title">🟢 Buy Opportunities <span style="font-size:11px; color:var(--ink-soft); font-weight:400; font-family:'IBM Plex Mono',monospace;">— jo coins abhi buy criteria pura kar rahe hain</span></div>
+  <div class="engine-title">Long-side opportunity scan <span style="font-size:11px; color:var(--ink-soft); font-weight:400; font-family:'IBM Plex Mono',monospace;">— setups meeting the current ruleset</span></div>
   <div class="card buyopp-card" id="buyOppCard">
     <div class="buyopp-allrow">
       <div>
@@ -646,7 +696,7 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
     <div class="disclaimer" style="margin-top:10px;" id="buyOppDisclaimer">Yeh sirf woh coins hain jinka score abhi BUY threshold cross kar raha hai (watchlist + top 15 sabse zyada volume/use wale coins, current entry timeframe pe). Yeh guarantee nahi hai — khud confirm karke hi trade karein.</div>
   </div>
 
-  <div class="engine-title">🔴 Sell Opportunities <span style="font-size:11px; color:var(--ink-soft); font-weight:400; font-family:'IBM Plex Mono',monospace;">— jo coins abhi sell criteria pura kar rahe hain</span></div>
+  <div class="engine-title">Short-side opportunity scan <span style="font-size:11px; color:var(--ink-soft); font-weight:400; font-family:'IBM Plex Mono',monospace;">— setups meeting the current ruleset</span></div>
   <div class="card sellopp-card" id="sellOppCard">
     <div class="buyopp-allrow">
       <div>
@@ -716,11 +766,17 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
     <div class="sub" id="confLevelSub" style="margin-top:4px;">--</div>
   </div>
 
-  <div class="engine-title">Decision Engine</div>
+  <div class="engine-title">Decision engine / action gate</div>
   <div class="signal-card none" id="signalCard">
-    <div class="signal-label">Current Signal</div>
-    <div class="signal-value none" id="signalValue">ANALYZING…</div>
-    <div class="conf-label">Analysis score (not a win probability)</div>
+  <div class="signal-label">Current Signal</div>
+  <div class="signal-value none" id="signalValue">ANALYZING…</div>
+  <div class="trade-timing" id="tradeTiming" data-state="wait" aria-live="polite">
+    <div class="trade-timing-kicker">Action gate</div>
+    <div class="trade-timing-title" id="tradeTimingTitle">WAIT — loading live market data</div>
+    <div class="trade-timing-copy" id="tradeTimingCopy">The app will only mark a setup as tradable after trend, momentum, liquidity, and risk/reward checks agree.</div>
+    <div class="trade-timing-rules"><span>Trend aligned</span><span>Momentum confirmed</span><span>Stop-loss required</span></div>
+  </div>
+  <div class="conf-label">Analysis score (not a win probability)</div>
     <div class="conf-bar"><div class="conf-fill none" id="confFill" style="width:0%"></div></div>
     <div class="conf-score" id="confScore">0 / 100</div>
     <div class="score-breakdown" id="scoreBreakdown"></div>
@@ -888,6 +944,18 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
       <button class="btn" id="trialBtn" type="button" style="margin-top:10px;">Start Free Trial</button>
     </div>
     <div class="plan-grid" id="planGrid"></div>
+
+    <div class="vip-command-card" aria-labelledby="vipCommandTitle">
+      <div class="risk-review-kicker">VIP workspace</div>
+      <div class="vip-command-head"><div class="risk-review-title" id="vipCommandTitle">Your premium command center</div><span class="risk-badge">LOCKED UNTIL ACTIVE</span></div>
+      <div class="vip-feature-grid">
+        <div class="vip-feature"><b>LIVE DATA</b><span>Binance candles, price and volume</span><em class="status-live">CONNECTED</em></div>
+        <div class="vip-feature"><b>PORTFOLIO</b><span>Paper positions, P&amp;L and trade history</span><em class="status-ready">READY</em></div>
+        <div class="vip-feature"><b>ALERTS</b><span>Watchlist, price alerts and overnight scan</span><em class="status-ready">READY</em></div>
+        <div class="vip-feature"><b>EXECUTION</b><span>Analysis only — no automatic real-money orders</span><em class="status-safe">DISABLED</em></div>
+      </div>
+      <div class="vip-trust-note">VIP unlocks the workspace tools; it does not guarantee profit or turn analysis into financial advice. Your own risk limit always comes first.</div>
+    </div>
 
     <div class="pay-box">
       <div class="pay-title">PAYMENT DETAILS — pay manually, then message screenshot to get access</div>
@@ -2696,6 +2764,16 @@ function renderSignal(r){
   fill.style.width = r.score+"%";
   document.getElementById("confScore").textContent = r.score + " / 100" + (r.score>=90?" · Very strong": r.score>=80?" · Strong": r.score>=60?" · Setup":" · Below threshold");
 
+  const timing = document.getElementById("tradeTiming");
+  const timingTitle = document.getElementById("tradeTimingTitle");
+  const timingCopy = document.getElementById("tradeTimingCopy");
+  if(timing && timingTitle && timingCopy){
+    if(tradingLocked){ timing.dataset.state="avoid"; timingTitle.textContent="DO NOT TRADE — risk lock active"; timingCopy.textContent="Your daily loss limit is reached. Stop for today; reset only after reviewing what went wrong."; }
+    else if(r.signal==="BUY" || r.signal==="SELL"){ timing.dataset.state="trade"; timingTitle.textContent=`TRADE SETUP — ${r.signal} confirmed`; timingCopy.textContent=`A rules-based ${r.signal} scenario is active at ${ENTRY_TF.toUpperCase()}. Use the entry zone, stop-loss, and position size below; never chase a move.`; }
+    else if(r.signal==="WAIT_FOR_ENTRY"){ timing.dataset.state="wait"; timingTitle.textContent="WAIT — entry confirmation needed"; timingCopy.textContent="The direction may be developing, but price has not confirmed a safe entry. Wait for the listed level instead of entering at market."; }
+    else { timing.dataset.state="avoid"; timingTitle.textContent="NO TRADE — setup is not ready"; timingCopy.textContent="Stand aside. Trend, momentum, liquidity, or risk/reward is not strong enough. Re-check after the next candle closes."; }
+  }
+  
   document.getElementById("scoreBreakdown").innerHTML = r.breakdown.map(b=>`<span class="sb-chip">${b[0]} ${b[1]}/${b[2]}</span>`).join("");
 
   const patternRow = document.getElementById("patternRow");
