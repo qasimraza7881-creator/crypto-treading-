@@ -541,7 +541,36 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
 .nav-btn.active .nav-ico{ filter:none; opacity:1; transform:scale(1.08); }
 .nav-btn:active{ transform:scale(.94); }
 .nav-btn .nav-dot{ width:4px; height:4px; border-radius:50%; background:var(--red); margin-top:1px; opacity:0; }
-.nav-btn.active .nav-dot{ opacity:1; }
+  .nav-btn.active .nav-dot{ opacity:1; }
+
+  /* Trust-first dark fintech refresh */
+  :root{
+    --bg:#0b0e12; --surface:#11161d; --surface-2:#171d25;
+    --ink:#edf2f7; --ink-soft:#8e9aa8;
+    --red:#ff5d67; --red-deep:#d94450; --red-line:#293440;
+    --green:#32d583; --green-soft:#10251e; --red-soft:#2a171b;
+    --amber:#f4b84a; --amber-soft:#2a2111;
+  }
+  html,body{background:var(--bg);color:var(--ink);}
+  .ticker-wrap{background:#10161d;border-bottom-color:#26313d;box-shadow:none;}
+  .ticker-track{color:#b9c5d2;}
+  header{padding-top:26px;}
+  .eyebrow{color:var(--green);}
+  h1{letter-spacing:-.03em;}
+  .mode-btn,.ptab,.tf-chip,.level-box,.reason,.sb-chip,.mtf-pill,.search-wrap input,.coin-dropdown{background:var(--surface);border-color:var(--red-line);color:var(--ink);}
+  .mode-btn.active{background:var(--red);border-color:var(--red);color:#fff;}
+  .ptab.active{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+  .card,.setup-card,.signal-card{background:var(--surface);border-color:var(--red-line);box-shadow:0 14px 34px rgba(0,0,0,.16);}
+  .signal-card.buy{background:var(--green-soft);border-color:#235f47;}.signal-card.sell{background:var(--red-soft);border-color:#703039;}.signal-card.none{background:var(--surface-2);}
+  .level-box,.reason{background:var(--surface-2);}.disclaimer{color:#84919f;}
+  .risk-review{background:linear-gradient(135deg,#121b21,#11161d);border:1px solid #33404b;border-radius:20px;padding:18px;margin:18px 0;}
+  .risk-review-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px;}
+  .risk-review-title{font-family:'Fraunces',serif;font-size:20px;font-weight:600;}.risk-review-kicker{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:var(--amber);text-transform:uppercase;margin-bottom:5px;}
+  .risk-badge{font:600 10px 'IBM Plex Mono',monospace;color:var(--amber);border:1px solid #7a5c28;border-radius:999px;padding:6px 8px;white-space:nowrap;}
+  .risk-review p{font-size:13px;line-height:1.55;color:var(--ink-soft);margin:0 0 12px;}.risk-review strong{color:var(--ink);}
+  .risk-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;}.risk-item{background:var(--surface-2);border:1px solid var(--red-line);border-radius:12px;padding:11px;font-size:12px;line-height:1.45;color:var(--ink-soft);}.risk-item b{display:block;color:var(--ink);font-size:11px;margin-bottom:4px;}
+  .risk-links{display:flex;flex-wrap:wrap;gap:8px;}.risk-links a{color:#8fc7ff;font:500 11px 'IBM Plex Mono',monospace;text-decoration:none;border-bottom:1px solid #385f86;padding-bottom:2px;}
+  @media(max-width:420px){.risk-grid{grid-template-columns:1fr;}.risk-review{padding:15px;}.risk-review-head{display:block}.risk-badge{display:inline-block;margin-top:9px;}}
 </style>
 </head>
 <body>
@@ -566,6 +595,21 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
     <div class="ptab active" id="tabCrypto">Crypto · Binance (live)</div>
     <div class="ptab disabled" id="tabForex" title="Needs a licensed forex data provider + API key. Not connected — no fake prices will be shown.">Forex/Metals · not connected</div>
   </div>
+
+  <section class="risk-review" aria-labelledby="riskReviewTitle">
+    <div class="risk-review-head">
+      <div><div class="risk-review-kicker">Safety check · before you trade</div><div class="risk-review-title" id="riskReviewTitle">Exness link review</div></div>
+      <span class="risk-badge">HIGH CAUTION</span>
+    </div>
+    <p><strong>Result:</strong> the supplied links are not enough to prove an official broker or a safe account. Treat <strong>1exness.global</strong> as unverified; do not deposit, share OTPs, or upload identity documents until you confirm the domain independently.</p>
+    <div class="risk-grid">
+      <div class="risk-item"><b>DOMAIN</b>Look for the exact official Exness domain and valid HTTPS certificate. Similar-looking domains can be impersonation sites.</div>
+      <div class="risk-item"><b>PAYMENTS</b>Never pay a “tax”, “unlock”, or “withdrawal fee” to release funds. Contact your bank/card provider if you already paid.</div>
+      <div class="risk-item"><b>CHAT EVIDENCE</b>Save the full chat, usernames, wallet addresses, receipts, and timestamps. Do not delete messages.</div>
+      <div class="risk-item"><b>TRADING RESULT</b>This dashboard reports evidence-based scenarios only. No tool can guarantee that price will go up or down.</div>
+    </div>
+    <div class="risk-links"><a href="https://apps.apple.com/app/id143679997" target="_blank" rel="noopener noreferrer">Review App Store listing</a><a href="https://1exness.global" target="_blank" rel="noopener noreferrer">Open supplied domain cautiously</a></div>
+  </section>
 
   <div class="engine-title">Analyze Setup</div>
 
