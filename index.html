@@ -575,7 +575,8 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
   .vip-command-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;}
   .vip-feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .vip-feature{border:1px solid var(--red-line);background:var(--surface);border-radius:11px;padding:10px;display:flex;flex-direction:column;gap:4px;min-width:0;}
-  .vip-feature b{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--ink);}.vip-feature span{font-size:11px;line-height:1.35;color:var(--ink-soft);}.vip-feature em{font:600 9px 'IBM Plex Mono',monospace;font-style:normal;margin-top:2px;}.status-live{color:var(--green);}.status-ready{color:var(--amber);}.status-safe{color:#9aa7b5;}.vip-trust-note{font-size:11px;line-height:1.5;color:var(--ink-soft);margin-top:11px;padding-top:10px;border-top:1px solid var(--red-line);}
+  .vip-feature b{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--ink);}.vip-feature span{font-size:11px;line-height:1.35;color:var(--ink-soft);}.vip-feature em{font:600 9px 'IBM Plex Mono',monospace;font-style:normal;margin-top:2px;}.status-live{color:var(--green);}.status-ready{color:var(--amber);}.status-safe{color:#9aa7b5;}  .vip-trust-note{font-size:11px;line-height:1.5;color:var(--ink-soft);margin-top:11px;padding-top:10px;border-top:1px solid var(--red-line);}
+  .trade-timing{margin:12px 0 16px;padding:12px 13px;border:1px solid #645126;border-radius:13px;background:var(--amber-soft);}.trade-timing[data-state="trade"]{background:var(--green-soft);border-color:#235f47}.trade-timing[data-state="avoid"]{background:var(--red-soft);border-color:#703039}.trade-timing-kicker{font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);}.trade-timing[data-state="trade"] .trade-timing-kicker{color:var(--green)}.trade-timing[data-state="avoid"] .trade-timing-kicker{color:var(--red)}.trade-timing-title{font:700 17px 'Fraunces',serif;margin:3px 0 4px}.trade-timing-copy{font-size:12px;line-height:1.45;color:var(--ink-soft)}.trade-timing-rules{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.trade-timing-rules span{font:500 9px 'IBM Plex Mono',monospace;border:1px solid var(--red-line);border-radius:999px;padding:4px 6px;color:var(--ink-soft);background:var(--surface)}
   @media(max-width:420px){.vip-command-head{display:block}.vip-command-head .risk-badge{margin-top:8px}.vip-feature-grid{grid-template-columns:1fr;}}
 </style>
 </head>
@@ -768,9 +769,15 @@ main{ padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
 
   <div class="engine-title">Decision Engine</div>
   <div class="signal-card none" id="signalCard">
-    <div class="signal-label">Current Signal</div>
-    <div class="signal-value none" id="signalValue">ANALYZING…</div>
-    <div class="conf-label">Analysis score (not a win probability)</div>
+  <div class="signal-label">Current Signal</div>
+  <div class="signal-value none" id="signalValue">ANALYZING…</div>
+  <div class="trade-timing" id="tradeTiming" data-state="wait" aria-live="polite">
+    <div class="trade-timing-kicker">Action gate</div>
+    <div class="trade-timing-title" id="tradeTimingTitle">WAIT — loading live market data</div>
+    <div class="trade-timing-copy" id="tradeTimingCopy">The app will only mark a setup as tradable after trend, momentum, liquidity, and risk/reward checks agree.</div>
+    <div class="trade-timing-rules"><span>Trend aligned</span><span>Momentum confirmed</span><span>Stop-loss required</span></div>
+  </div>
+  <div class="conf-label">Analysis score (not a win probability)</div>
     <div class="conf-bar"><div class="conf-fill none" id="confFill" style="width:0%"></div></div>
     <div class="conf-score" id="confScore">0 / 100</div>
     <div class="score-breakdown" id="scoreBreakdown"></div>
@@ -2758,6 +2765,16 @@ function renderSignal(r){
   fill.style.width = r.score+"%";
   document.getElementById("confScore").textContent = r.score + " / 100" + (r.score>=90?" · Very strong": r.score>=80?" · Strong": r.score>=60?" · Setup":" · Below threshold");
 
+  const timing = document.getElementById("tradeTiming");
+  const timingTitle = document.getElementById("tradeTimingTitle");
+  const timingCopy = document.getElementById("tradeTimingCopy");
+  if(timing && timingTitle && timingCopy){
+    if(tradingLocked){ timing.dataset.state="avoid"; timingTitle.textContent="DO NOT TRADE — risk lock active"; timingCopy.textContent="Your daily loss limit is reached. Stop for today; reset only after reviewing what went wrong."; }
+    else if(r.signal==="BUY" || r.signal==="SELL"){ timing.dataset.state="trade"; timingTitle.textContent=`TRADE SETUP — ${r.signal} confirmed`; timingCopy.textContent=`A rules-based ${r.signal} scenario is active at ${ENTRY_TF.toUpperCase()}. Use the entry zone, stop-loss, and position size below; never chase a move.`; }
+    else if(r.signal==="WAIT_FOR_ENTRY"){ timing.dataset.state="wait"; timingTitle.textContent="WAIT — entry confirmation needed"; timingCopy.textContent="The direction may be developing, but price has not confirmed a safe entry. Wait for the listed level instead of entering at market."; }
+    else { timing.dataset.state="avoid"; timingTitle.textContent="NO TRADE — setup is not ready"; timingCopy.textContent="Stand aside. Trend, momentum, liquidity, or risk/reward is not strong enough. Re-check after the next candle closes."; }
+  }
+  
   document.getElementById("scoreBreakdown").innerHTML = r.breakdown.map(b=>`<span class="sb-chip">${b[0]} ${b[1]}/${b[2]}</span>`).join("");
 
   const patternRow = document.getElementById("patternRow");
